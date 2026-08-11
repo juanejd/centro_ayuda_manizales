@@ -32,6 +32,7 @@ export type ResourceDetail = DirectoryResource & {
   meeting_point: string | null;
   latitude: number | null;
   longitude: number | null;
+  photos: { storagePath: string; caption: string | null }[];
 };
 
 export type DirectoryFilters = {
@@ -50,7 +51,7 @@ export type ComunaOption = {
 const LIST_COLUMNS =
   "slug, category, name, description, address, comuna_code, phones, hours, source, status, verified_at, comunas(name), neighborhoods(name)";
 
-const DETAIL_COLUMNS = `${LIST_COLUMNS}, meeting_point, latitude, longitude`;
+const DETAIL_COLUMNS = `${LIST_COLUMNS}, meeting_point, latitude, longitude, info_resource_photos(storage_path, caption, sort_order)`;
 
 type EmbeddedName = { name: string } | { name: string }[] | null;
 
@@ -70,10 +71,17 @@ type ResourceRow = {
   neighborhoods: EmbeddedName;
 };
 
+type PhotoRow = {
+  storage_path: string;
+  caption: string | null;
+  sort_order: number;
+};
+
 type ResourceDetailRow = ResourceRow & {
   meeting_point: string | null;
   latitude: number | null;
   longitude: number | null;
+  info_resource_photos: PhotoRow[] | null;
 };
 
 function embeddedName(embed: EmbeddedName): string | null {
@@ -185,11 +193,20 @@ export async function getResourceBySlug(
 
   const row = data as unknown as ResourceDetailRow;
 
+  const photos = (row.info_resource_photos ?? [])
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((photo) => ({
+      storagePath: photo.storage_path,
+      caption: photo.caption,
+    }));
+
   return {
     ...toDirectoryResource(row, new Date()),
     meeting_point: row.meeting_point,
     latitude: row.latitude,
     longitude: row.longitude,
+    photos,
   };
 }
 
