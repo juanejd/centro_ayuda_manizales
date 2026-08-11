@@ -2,771 +2,857 @@
 
 **Documento de Requisitos Técnicos**
 
-| Campo | Valor |
-| --- | --- |
-| Documento fuente | `MVP — Plataforma Inteligente de Respuesta y Coordinación ante Emergencias (1).md` |
-| Alcance | Tres módulos del documento fuente, con las necesidades y los aportes acoplados por un tablero público |
-| Cobertura territorial | **Municipio de Manizales**, urbano y rural |
-| Artefacto acompañante | [`docs/data-model.sql`](./data-model.sql) — DDL completo |
-| Plan de ejecución | [`docs/implementation/`](./implementation/README.md) — nueve fases con sus unidades de trabajo |
 
-Este documento es la fuente de verdad técnica de la plataforma. Define qué se construye, con qué tecnología, sobre qué modelo de datos y bajo qué criterios se considera terminado.
+| Campo             | Valor                                                                              |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| Documento fuente  | `MVP — Plataforma Inteligente de Respuesta y Coordinación ante Emergencias (1).md` |
+| Datos de origen   | `base_verificada_emergencia_sismo_manizales_2026-08-10.md`                         |
+| Cobertura         | **Municipio de Manizales**, urbano y rural                                         |
+| Modelo de datos   | [docs/data-model.sql](./data-model.sql)                                            |
+| Plan de ejecución | [docs/implementation/](./implementation/README.md)                                 |
+
+
+Fuente de verdad técnica de la plataforma.
 
 ---
+
+
 
 ## Contenido
 
-1. [Alcance](#1-alcance)
-2. [Contexto de uso y restricciones de producto](#2-contexto-de-uso-y-restricciones-de-producto)
-3. [Actores](#3-actores)
-4. [Arquitectura técnica](#4-arquitectura-técnica)
-5. [Requisitos funcionales](#5-requisitos-funcionales)
-6. [Tabla de emparejamiento](#6-tabla-de-emparejamiento)
-7. [Requisitos no funcionales](#7-requisitos-no-funcionales)
-8. [Seguridad y privacidad](#8-seguridad-y-privacidad)
-9. [Modelo de datos](#9-modelo-de-datos)
-10. [Decisiones de la organización](#10-decisiones-de-la-organización)
-11. [Criterios de aceptación](#11-criterios-de-aceptación)
-12. [Plan de implementación](#12-plan-de-implementación)
-13. [Trazabilidad con el documento fuente](#13-trazabilidad-con-el-documento-fuente)
+1. [Qué es la plataforma](#1-qué-es-la-plataforma)
+2. [El problema](#2-el-problema)
+3. [Contexto de uso y restricciones](#3-contexto-de-uso-y-restricciones)
+4. [Actores](#4-actores)
+5. [Arquitectura técnica](#5-arquitectura-técnica)
+6. [Procedencia de la información](#6-procedencia-de-la-información)
+7. [Sistema de interfaz](#7-sistema-de-interfaz)
+8. [Requisitos funcionales](#8-requisitos-funcionales)
+9. [Traducción de aporte a categoría](#9-traducción-de-aporte-a-categoría)
+10. [Requisitos no funcionales](#10-requisitos-no-funcionales)
+11. [Seguridad y privacidad](#11-seguridad-y-privacidad)
+12. [Modelo de datos](#12-modelo-de-datos)
+13. [Decisiones de la organización](#13-decisiones-de-la-organización)
+14. [Criterios de aceptación](#14-criterios-de-aceptación)
+15. [Plan de implementación](#15-plan-de-implementación)
 
 ---
 
-## 1. Alcance
 
-### 1.1 Principio de diseño
 
-Una necesidad publicada es visible para cualquier persona. Quien puede ayudar encuentra por sí mismo la necesidad que corresponde a lo que ofrece, sin intermediario, sin cuenta y sin esperar a que un funcionario haga la conexión.
+## 1. Qué es la plataforma
 
-De ese principio se derivan todas las decisiones de este documento, incluidas las de seguridad de la sección 8.
+**Un tablero de publicaciones con dos ámbitos que actúan sobre él, más una sección informativa.**
 
-### 1.2 Módulos
 
-| # | Módulo | Naturaleza |
-| --- | --- | --- |
-| 1 | **Necesito Ayuda** | Escritura pública — publicar una necesidad |
-| 2 | **Tablero de necesidades** | Lectura pública — ver y filtrar necesidades |
-| 3 | **Quiero Ayudar** | Escritura y lectura — registrar un aporte con emparejamiento en vivo |
-| 4 | **Busco Información** | Lectura — directorio informativo |
-| 5 | **Moderación** | Escritura autenticada — verificar, ocultar y mantener el directorio |
+| Ámbito                    | Qué hace                                                                                                                    |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Necesito ayuda**        | Escribe una publicación en el tablero y muestra la información relevante para quien la escribe                              |
+| **Quiero ayudar**         | Filtra ese mismo tablero: la persona completa unos campos y la plataforma le muestra las publicaciones que le corresponden  |
+| **Centro de información** | No es tablero. Es información institucional verificada: líneas, albergues, hospitales, alertas vigentes y guía de actuación |
 
-Más la pantalla principal.
 
-El tablero de necesidades no existe en el documento fuente. Es la pieza que permite acoplar los módulos 1 y 3: sin una superficie pública de lectura, una necesidad publicada no puede llegar a quien la resuelve.
+Las dos consecuencias que se derivan de esa forma, y que definen todo lo demás:
 
-### 1.3 Cobertura territorial
+**Quiero ayudar no registra nada. Filtra.** No hay cuenta, ni código de radicado, ni bandeja de aportantes, ni emparejamiento diferido. La persona dice qué puede aportar y ve, en esa misma pantalla, quién lo necesita. La conexión la hace ella llamando.
 
-La plataforma cubre **únicamente el municipio de Manizales**, en su zona urbana y rural. No se pide el municipio en ningún formulario: sería un campo con una sola respuesta posible, y en un formulario que debe completarse en 90 segundos eso es un toque a cambio de nada.
+**El tablero es la única entidad viva.** Una publicación se crea, se lee, se cierra y se retira. Todo lo demás es catálogo o contenido verificado.
 
-El eje geográfico es, por tanto, un nivel más abajo: la **comuna** —once urbanas más los corregimientos rurales— es lo que filtra el tablero, el directorio y el emparejamiento. La persona escribe su **barrio**, que es lo que conoce, y el sistema deriva la comuna.
+### 1.1 Fuera del alcance
 
-Extender la plataforma a otro municipio es una migración conocida y acotada: añadir una tabla de municipios y una clave foránea en `comunas`. Una sola tabla, no tres. No se construye ahora porque sería estructura especulativa.
 
-### 1.4 Fuera del alcance
+| Componente                      | Motivo                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------- |
+| Manos Amigas (voluntariado)     | Requiere actividades, cupos e inscripciones. Módulo completo por sí solo. |
+| Asistente IA                    | Requiere el resto poblado para tener valor.                               |
+| Centro de Comando               | Requiere agregaciones y mapas de calor. La moderación no lo sustituye.    |
+| Clasificación automática por IA | Depende del Asistente IA. La prioridad es manual.                         |
+| Registro de aportantes          | «Quiero ayudar» es un filtro. No se almacena quién ofreció.               |
+| Aplicación móvil nativa         | Web responsive.                                                           |
+| Recepción o custodia de dinero  | El documento fuente lo prohíbe.                                           |
 
-| Componente | Motivo |
-| --- | --- |
-| **Manos Amigas** (voluntariado) | Requiere gestión de actividades, cupos e inscripciones. Es un módulo completo por sí solo. |
-| **Asistente IA** | Requiere el resto de la información poblada para tener valor. |
-| **Centro de Comando** (dashboard) | Requiere agregaciones, mapas de calor y métricas. La moderación no lo sustituye. |
-| Clasificación automática por IA (categoría, prioridad, resumen, duplicados) | Depende del Asistente IA. La prioridad es un campo manual. |
-| Aplicación móvil nativa | Web responsive. El documento fuente ya lo excluye. |
-| Recepción o custodia de dinero | El documento fuente lo prohíbe explícitamente. |
 
-Ningún elemento de esta lista queda descartado; queda fuera de esta entrega.
+Nada de esto queda descartado; queda fuera de esta entrega.
 
 ---
 
-## 2. Contexto de uso y restricciones de producto
 
-Requisitos, no aspiraciones. Toda decisión técnica se subordina a ellos.
 
-| ID | Restricción | Implicación técnica |
-| --- | --- | --- |
-| RP-1 | La persona está en una emergencia, posiblemente en la calle, alterada y con prisa | Un formulario debe completarse en menos de 90 segundos. |
-| RP-2 | Acceso desde celular, con red móvil degradada o saturada | Presupuesto de peso estricto (§7.2). Renderizado en servidor. |
-| RP-3 | Perfil de usuario heterogéneo, incluida baja alfabetización digital | Lenguaje llano, botones grandes, un concepto por pantalla. |
-| RP-4 | Sin registro ni inicio de sesión para el ciudadano | Aplica tanto a publicar como a leer. La autenticación existe solo para el Moderador. |
-| RP-5 | Dispositivos antiguos y de gama baja | Degradación elegante. Sin APIs recientes en rutas críticas. |
-| RP-6 | La información desactualizada es peligrosa | La fecha de verificación es un elemento visual de primer nivel, en el tablero y en el directorio. |
-| RP-7 | Una necesidad ya atendida que sigue publicada desperdicia ayuda | Obliga al cierre y retiro autónomo de la propia publicación, y a la caducidad automática. |
+## 2. El problema
 
----
+Del documento de datos verificados, §16: la Alcaldía publica un balance agregado y declara explícitamente **doce vacíos que no tiene confirmados**.
 
-## 3. Actores
 
-| Actor | Autenticación | Capacidades |
-| --- | --- | --- |
-| **Ciudadano o entidad que necesita ayuda** | Anónimo | Publicar una necesidad. Gestionar su propia publicación con su enlace de gestión: corregirla, marcarla como resuelta o retirarla. Consultar el tablero y el directorio. |
-| **Ciudadano o entidad que quiere ayudar** | Anónimo | Ver y filtrar el tablero. Registrar su aporte y ver en vivo las necesidades que coinciden. Consultar el directorio. |
-| **Moderador** | Autenticado | Verificar, marcar como duplicada u ocultar necesidades. Asignar prioridad. Retirar una foto. Gestionar los aportes registrados. Mantener el directorio y su estado de verificación. Exportar CSV. |
+| La autoridad tiene                  | La autoridad no tiene                        |
+| ----------------------------------- | -------------------------------------------- |
+| 4.000+ damnificados                 | Qué barrios, comunas y veredas (§16.6)       |
+| 160+ estructuras afectadas          | Cuáles y dónde (§16.5)                       |
+| 3 albergues habilitados             | Capacidad disponible ahora (§16.10)          |
+| Afectación eléctrica en Cerro Bravo | Balance de cortes de agua, luz y gas (§16.8) |
+| Cable Aéreo fuera de servicio       | Listado consolidado de vías cerradas (§16.7) |
 
-Un único rol autenticado cubre tanto la moderación de necesidades como el mantenimiento del directorio.
+
+**La autoridad tiene el agregado; la ciudadanía tiene el detalle; no hay canal entre ambos.** Esa es la razón de existir del tablero.
+
+La plataforma **no es un despachador de emergencias**. La línea 123 —con sus cinco opciones— y la 119 ya cubren eso y funcionan. La plataforma enruta hacia ellas y nunca las reemplaza.
 
 ---
 
-## 4. Arquitectura técnica
 
-### 4.1 Stack
 
-| Capa | Tecnología | Justificación |
-| --- | --- | --- |
-| Framework | **Next.js (App Router) + TypeScript** | Renderizado en servidor (RP-2). Server Actions eliminan la necesidad de una capa de API propia para los formularios. |
-| Estilos | **Tailwind CSS** | Sin CSS en tiempo de ejecución. Coste cero en JavaScript. |
-| Base de datos | **Supabase (PostgreSQL)** | RLS por fila y vistas, que son el mecanismo central de la sección 8. |
-| Almacenamiento de archivos | **Supabase Storage** | Fotos de necesidades y del directorio. |
-| Autenticación | **Supabase Auth** | Solo para el Moderador. El ciudadano nunca se autentica (RP-4). |
-| Despliegue | **Vercel** | Sin infraestructura que operar durante una emergencia. |
+## 3. Contexto de uso y restricciones
 
-### 4.2 La clave anónima no llega al navegador
+Requisitos, no aspiraciones.
 
-Ninguna variable de entorno de Supabase se publica con el prefijo `NEXT_PUBLIC_`. Todas las lecturas y escrituras ocurren en el servidor: Server Components para el renderizado, Server Actions para los formularios y un único Route Handler para el filtrado en vivo.
 
-Consecuencia: no existe un endpoint REST público de Supabase alcanzable por un tercero, porque nadie fuera del servidor tiene la clave. Extraer los datos exige raspar páginas HTML paginadas y con límite de tasa, en lugar de una sola llamada que devuelva miles de filas.
+| ID   | Restricción                                                     | Implicación                                                                     |
+| ---- | --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| RP-1 | Persona en emergencia, en la calle, alterada y con prisa        | Un formulario se completa en menos de 90 segundos                               |
+| RP-2 | Celular con red móvil degradada                                 | Renderizado en servidor, peso contenido                                         |
+| RP-3 | Perfil heterogéneo, baja alfabetización digital                 | Lenguaje llano, botones grandes, un concepto por pantalla                       |
+| RP-4 | Sin registro ni inicio de sesión para el ciudadano              | Aplica a publicar y a leer. La autenticación existe solo para el Moderador      |
+| RP-5 | Dispositivos antiguos                                           | Degradación elegante. Todo funciona sin JavaScript                              |
+| RP-6 | La información desactualizada es peligrosa                      | La fecha de verificación es un elemento visual de primer nivel                  |
+| RP-7 | Una necesidad ya atendida que sigue publicada desperdicia ayuda | Cierre y retiro autónomos, más caducidad automática                             |
+| RP-8 | La información cambia durante la emergencia                     | Toda información institucional lleva hora de corte visible; las alertas caducan |
 
-Esto no oculta los datos de contacto —son públicos por diseño— pero cambia el coste de la extracción masiva en varios órdenes de magnitud. Es la mitigación estructural más importante del sistema.
 
-### 4.3 Qué clave hace qué
+---
 
-Dentro del servidor, la elección de clave es en sí misma una frontera de seguridad.
 
-| Clave | Se usa para | No se usa para |
-| --- | --- | --- |
-| `anon` | Lecturas públicas (tablero, directorio) y los `INSERT` de ambos formularios públicos. Se usa aun ejecutándose en el servidor, para que RLS siga siendo una segunda capa real y no decorativa. | Nada que requiera saltarse RLS. |
-| `service_role` | Exactamente dos operaciones: la gestión de la propia publicación por `reference_code` más `manage_token`, que no puede expresarse como política RLS porque el token nunca es una credencial de base de datos; y las barridas programadas de caducidad. | Moderación. Ninguna otra cosa. |
-| Sesión del usuario autenticado | Moderación, de modo que la comprobación de pertenencia al equipo y el registro de auditoría se apliquen de verdad. | — |
 
-Que la moderación no use `service_role` es deliberado: si lo hiciera, el registro de auditoría no podría atribuir la acción a nadie.
+## 4. Actores
 
-### 4.4 Estructura de directorios
 
-Organización por dominio. Cada módulo es una vertical autocontenida.
+| Actor                       | Autenticación | Capacidades                                                                                |
+| --------------------------- | ------------- | ------------------------------------------------------------------------------------------ |
+| **Quien necesita ayuda**    | Anónimo       | Publicar. Gestionar su publicación con su enlace: corregir, cerrar o retirar               |
+| **Quien quiere ayudar**     | Anónimo       | Filtrar el tablero indicando qué puede aportar. Llamar directamente                        |
+| **Quien busca información** | Anónimo       | Consultar líneas, recursos, alertas y guía de actuación                                    |
+| **Moderador**               | Autenticado   | Verificar, ocultar, retirar, asignar prioridad y zona. Mantener el contenido institucional |
+
+
+Un único rol autenticado.
+
+---
+
+
+
+## 5. Arquitectura técnica
+
+
+
+### 5.1 Stack
+
+
+| Capa          | Tecnología                        |
+| ------------- | --------------------------------- |
+| Framework     | Next.js (App Router) + TypeScript |
+| Estilos       | Tailwind CSS + shadcn/ui          |
+| Base de datos | Supabase (PostgreSQL) con RLS     |
+| Archivos      | Supabase Storage                  |
+| Autenticación | Supabase Auth, solo Moderador     |
+| Despliegue    | Vercel                            |
+
+
+
+
+### 5.2 La clave anónima no llega al navegador
+
+Ninguna variable de Supabase se publica con prefijo `NEXT_PUBLIC_`. Todas las lecturas y escrituras ocurren en servidor.
+
+Consecuencia: no existe endpoint REST público de Supabase. Extraer los datos exige raspar HTML paginado con tope de filas, en vez de una llamada que devuelva miles. No oculta los teléfonos —son públicos por diseño— pero cambia el coste de la extracción masiva en órdenes de magnitud. Es la mitigación estructural más importante.
+
+### 5.3 Qué clave hace qué
+
+
+| Clave              | Se usa para                                                                                                     |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `anon`             | Lecturas públicas y los `INSERT` del formulario. Se usa aun en servidor, para que RLS siga siendo una capa real |
+| `service_role`     | Solo dos cosas: gestión de la propia publicación por código más token, y las barridas de caducidad              |
+| Sesión autenticada | Moderación, para que la auditoría atribuya la acción a alguien                                                  |
+
+
+
+
+### 5.4 Estructura
 
 ```
 src/
   app/
-    page.tsx                      # Pantalla principal
-    necesito-ayuda/
-      page.tsx                    # Formulario
-      enviado/page.tsx            # Confirmación con radicado
-    necesidades/
-      page.tsx                    # Tablero público
-      [code]/page.tsx             # Detalle de una necesidad
-    mi-publicacion/
-      page.tsx                    # Gestión con código y token
-    quiero-ayudar/
-      page.tsx                    # Formulario con emparejamiento en vivo
-    informacion/
-      page.tsx                    # Directorio
-      [slug]/page.tsx
-    api/
-      necesidades/route.ts        # Filtrado en vivo, solo lectura
-    moderacion/                   # Protegido
-      page.tsx
-      login/page.tsx
+    page.tsx                  Pantalla principal
+    necesito-ayuda/           Formulario + confirmación
+    necesidades/              Tablero + detalle por código
+    quiero-ayudar/            Filtro guiado sobre el tablero
+    mi-publicacion/           Gestión con código y token
+    informacion/              Directorio + detalle
+    lineas-atencion/          Líneas consolidadas
+    que-hacer/                Guía de actuación
+    moderacion/               Protegido
   modules/
-    help-requests/                # Publicar, listar y gestionar necesidades
-      domain/                     # Tipos, categorías, validación Zod
-      actions/                    # Server Actions
-      queries/                    # Lecturas del tablero
-      components/
-    help-offers/                  # Aportes
-      domain/ actions/ components/
-    matching/                     # Motor de emparejamiento (§6)
-      domain/                     # Tabla de correspondencia, tipos
-      queries/
-    info-resources/               # Directorio
-      domain/ queries/ components/
+    help-requests/            Publicar, listar y gestionar
+    info-resources/           Contenido institucional
     moderation/
-      domain/ actions/ queries/ components/
   shared/
-    supabase/                     # Clientes de servidor y service-role. Ninguno de navegador.
-    ui/
-    validation/
-    rate-limit/
-    images/                       # Compresión y limpieza de metadatos
-supabase/
-  migrations/
-  seed/
-docs/
-  TRD.md
-  data-model.sql
+    supabase/ ui/ validation/ images/
 ```
 
-**Regla de dependencias:** `app/` importa de `modules/` y `shared/`. `modules/` importa de `shared/`. `shared/` no importa de ninguno de los anteriores. Un módulo no importa de otro módulo, con una única excepción declarada: `matching/` importa los vocabularios de `help-requests/domain` y `help-offers/domain`, porque su razón de existir es traducir entre ambos.
+`app/` importa de `modules/` y `shared/`. `modules/` importa de `shared/`. `shared/` no importa de ninguno.
 
-### 4.5 Flujo de publicación de una necesidad
+### 5.5 Caché
 
-```
-Formulario (Server Component + <form> nativo)
-  → Server Action
-      → Validación Zod en servidor
-      → Límite de tasa por IP
-      → Limpieza de metadatos de la foto (§8.2)
-      → Generación de reference_code y manage_token
-      → INSERT con moderation_status = 'sin_verificar'
-  → Confirmación con radicado y enlace de gestión
-  → Visible en el tablero de inmediato
-```
 
-El formulario funciona sin JavaScript. Es un `<form>` HTML apuntando a una Server Action. El JavaScript progresivo solo agrega comodidades: compresión de imagen, geolocalización y validación en vivo.
+| Vista                     | Estrategia                                     |
+| ------------------------- | ---------------------------------------------- |
+| Centro de información     | `revalidate = 300` más revalidación al editar  |
+| Tablero                   | `revalidate = 60`                              |
+| Detalle de publicación    | Dinámico. Debe reflejar de inmediato un retiro |
+| Filtro de «Quiero ayudar» | Sin caché                                      |
 
-### 4.6 Flujo de emparejamiento en vivo
-
-```
-Formulario Quiero Ayudar (Client Component mínimo)
-  → el usuario selecciona tipo de aporte y comuna
-  → debounce de 300 ms
-  → GET /api/necesidades?contribution=<t>&comuna=<c>
-       → Route Handler (servidor)
-           → traduce tipo de aporte a categorías (§6)
-           → consulta la vista pública, tope de 20 filas
-           → límite de tasa por IP
-  → renderiza el contador y la lista de coincidencias
-  → el usuario registra su aporte (Server Action)
-```
-
-Sin JavaScript, el bloque de coincidencias no se renderiza durante el llenado y la pantalla de confirmación muestra las necesidades coincidentes tras enviar. La funcionalidad no se pierde, se desplaza.
-
-### 4.7 Estrategia de caché
-
-| Vista | Estrategia | Motivo |
-| --- | --- | --- |
-| Directorio | Server Component, `revalidate = 300`, más revalidación bajo demanda al editar | Cambia poco. Se sirve casi como HTML estático. |
-| Tablero | Server Component, `revalidate = 60` | Una necesidad publicada debe verse en menos de un minuto. |
-| Detalle de necesidad | Dinámico, sin caché | Debe reflejar de inmediato un retiro o un cierre. |
-| Filtrado en vivo | Sin caché, con límite de tasa | Refleja el estado real del tablero. |
 
 ---
 
-## 5. Requisitos funcionales
 
-### 5.1 RF-0 — Pantalla principal
 
-| ID | Requisito |
-| --- | --- |
-| RF-0.1 | Muestra tres acciones: **NECESITO AYUDA**, **QUIERO AYUDAR**, **BUSCO INFORMACIÓN**. |
-| RF-0.2 | Cada acción es un bloque táctil de altura mínima 96 px con una frase de apoyo de una línea. |
-| RF-0.3 | Sin carrusel, sin texto introductorio largo, sin navegación compleja. |
-| RF-0.4 | Acceso a las líneas de emergencia oficiales como enlaces `tel:` directos, sin pasar por ningún formulario. Los números provienen del directorio, categoría «líneas de atención», y no están escritos en el código. |
-| RF-0.5 | Aviso permanente y visible: esta plataforma no reemplaza a la línea de emergencia oficial. |
-| RF-0.6 | Enlace secundario a **Ver todas las necesidades**, para quien quiere mirar el tablero sin llenar el formulario de aporte. |
-| RF-0.7 | Enlace secundario a **Gestionar mi publicación**. |
+## 6. Procedencia de la información
 
-### 5.2 RF-1 — Necesito Ayuda
+**La plataforma hace circular dos clases de información con criterios opuestos, y la interfaz debe distinguirlas siempre.**
 
-| ID | Requisito |
-| --- | --- |
-| RF-1.1 | Formulario de una sola pantalla, sin asistente por pasos. |
-| RF-1.2 | Campos obligatorios: categoría, descripción, **barrio o sector**, nombre de contacto, teléfono de contacto, consentimiento de tratamiento y consentimiento de publicación. No se pide el municipio: la plataforma cubre solo Manizales. |
-| RF-1.3 | Campos opcionales: sector, barrio o vereda; dirección; número de personas afectadas; ubicación en mapa; foto. |
-| RF-1.4 | Categorías: Salud · Vivienda y daños estructurales · Albergue · Alimentos · Agua · Sangre · Mascotas · Movilidad y vías · Servicios públicos · Personas desaparecidas · Atención psicológica · Transporte · Remoción de escombros · Otros. |
-| RF-1.5 | El formulario advierte, antes del campo de teléfono y de forma visualmente destacada, que el nombre, el teléfono y la foto serán visibles públicamente para cualquier persona en internet. No es texto legal en letra pequeña: es una advertencia de primer nivel. |
-| RF-1.6 | Dos casillas de consentimiento separadas, ambas sin marcar por defecto: tratamiento de datos personales, y publicación del nombre, el teléfono y la foto en un tablero público. Sin ambas no se envía. |
-| RF-1.7 | La ubicación se captura con la geolocalización del navegador solo mediante una acción explícita del usuario. Nunca automáticamente. Si se deniega, el barrio o sector en texto es suficiente. |
-| RF-1.7b | El campo de barrio es **texto con autocompletado** contra el catálogo de barrios de Manizales. Si el texto coincide con un barrio, se registra también su comuna y la necesidad queda filtrable por zona. **Si no coincide, se guarda el texto tal cual y la zona queda sin asignar**, para que un Moderador la resuelva. Nunca se rechaza un envío por un barrio ausente del catálogo. |
-| RF-1.8 | La foto es opcional, un solo archivo, comprimida en cliente con objetivo de 500 KB y tope de 5 MB sin compresión. Es **pública** una vez publicada la necesidad. |
-| RF-1.9 | Junto al campo de foto, advertencia de no incluir personas identificables ni documentos de identidad. |
-| RF-1.10 | Todos los metadatos de la imagen se eliminan en el servidor antes de almacenarla (§8.2). |
-| RF-1.11 | La necesidad se publica en el tablero de inmediato, con estado de moderación «sin verificar». Sin cola de aprobación. |
-| RF-1.12 | La prioridad no se calcula automáticamente. Toda necesidad nace sin prioridad y solo un Moderador la asigna. |
-| RF-1.13 | Al guardar: pantalla de confirmación con el código de radicado, el enlace de gestión y las líneas de emergencia oficiales. El enlace de gestión se presenta con instrucción explícita de guardarlo. |
-| RF-1.14 | La plataforma no emite ningún juicio sobre daños estructurales, condiciones médicas ni seguridad de un lugar. |
 
-La prioridad manual es consecuencia de que no haya clasificación automática. No se sustituye por heurísticas propias: una priorización automática mal hecha en una emergencia es peor que ninguna.
+|             | Institucional                 | Ciudadana                     |
+| ----------- | ----------------------------- | ----------------------------- |
+| Origen      | Fuente oficial obligatoria    | Cualquiera, sin cuenta        |
+| Publicación | Solo si hay confirmación      | Inmediata                     |
+| Criterio    | **Precisión sobre velocidad** | **Velocidad sobre precisión** |
+| Aparece en  | Centro de información         | Tablero                       |
 
-### 5.3 RF-2 — Tablero de necesidades
 
-| ID | Requisito |
-| --- | --- |
-| RF-2.1 | Accesible sin autenticación. Lista las necesidades publicadas, más recientes primero. |
-| RF-2.2 | Filtros por categoría y **comuna**, ambos poblados desde su catálogo, más una opción explícita **«zona sin asignar»**. Búsqueda por texto sobre la descripción y sobre el barrio escrito. |
-| RF-2.3 | Paginación con tope duro de 20 elementos por página. No existe vista ni parámetro que devuelva el conjunto completo. |
-| RF-2.4 | Cada tarjeta muestra categoría, distintivo de moderación, antigüedad relativa, **barrio tal como lo escribió la persona y su comuna cuando esté resuelta**, descripción, número de afectados, nombre de contacto y teléfono como enlace `tel:`. |
-| RF-2.4b | Una necesidad con la zona sin asignar **aparece en el tablero igual que las demás**, con su barrio en texto. No se oculta ni se posterga: quien vive en un asentamiento informal o en una vereda sin registrar es de quien menos se puede prescindir. |
-| RF-2.5 | Distintivo de moderación con color y texto: **Sin verificar** · **Verificado**, con la fuente que verificó · **Atendida** · **Duplicada**. |
-| RF-2.6 | Las necesidades atendidas permanecen visibles 48 horas marcadas como tales y luego se ocultan. Quien va en camino necesita saber que ya fue resuelta, no que desapareció. |
-| RF-2.7 | Vista de detalle por código de radicado, con la ubicación aproximada en mapa y la foto cuando existan. |
-| RF-2.8 | Aviso antifraude permanente y visible: nadie legítimo pedirá dinero, datos bancarios ni códigos de verificación a cambio de ayudar. |
-| RF-2.9 | Las necesidades ocultas y retiradas no aparecen en ninguna vista pública ni en la API de filtrado. |
-| RF-2.10 | El tablero y las vistas de detalle se sirven con `noindex, nofollow` y quedan excluidos en `robots.txt`. |
+Confundir un albergue confirmado por la Alcaldía con uno que alguien escribió en un formulario es el fallo más grave que puede cometer esta plataforma. La separación no es estética.
 
-### 5.4 RF-3 — Quiero Ayudar
+### 6.1 Reglas de publicación institucional
 
-| ID | Requisito |
-| --- | --- |
-| RF-3.1 | Primera pregunta: **¿Cómo puedes ayudar?**, como selección de tipo de aporte. |
-| RF-3.2 | Tipos de aporte: Dinero · Alimentos · Agua · Ropa y cobijas · Medicamentos o insumos permitidos · Transporte · Vehículos · Maquinaria · Herramientas · Alojamiento · Alimento para mascotas · Servicios profesionales · Tiempo como voluntario · Otro. |
-| RF-3.3 | Campos obligatorios: tipo de aportante (persona, empresa u organización), nombre, tipo de aporte y teléfono, más el consentimiento de tratamiento. La comuna es opcional y sirve para acotar el emparejamiento. |
-| RF-3.4 | A medida que el usuario selecciona tipo de aporte y, si quiere, comuna, y antes de enviar nada, la misma pantalla muestra el número de necesidades coincidentes y una lista de hasta 20, con enlace al detalle. Se actualiza con debounce de 300 ms. |
-| RF-3.4b | Sin comuna seleccionada, el emparejamiento abarca todo Manizales, **incluidas las necesidades con zona sin asignar**. Filtrar por comuna es una forma de acotar, nunca un requisito para ver resultados. |
-| RF-3.5 | La correspondencia entre tipo de aporte y categorías de necesidad se resuelve con la tabla de la sección 6. No es coincidencia literal de cadenas: los dos vocabularios son distintos. |
-| RF-3.6 | Si no hay coincidencias, se dice explícitamente y se ofrece ver el tablero completo. Nunca una lista vacía sin explicación. |
-| RF-3.7 | Sin JavaScript, el bloque en vivo no se renderiza y la pantalla de confirmación muestra las necesidades coincidentes tras enviar. |
-| RF-3.8 | Campos opcionales: descripción, cantidad o capacidad disponible, disponibilidad horaria, correo electrónico y sector. |
-| RF-3.9 | Si el tipo de aporte es Dinero, la plataforma no captura ningún dato financiero, no muestra emparejamiento y redirige a la lista de entidades verificadas del directorio. La plataforma no recibe ni custodia dinero. |
-| RF-3.10 | Si el tipo de aporte es Tiempo como voluntario, se registra el contacto, se muestran las necesidades coincidentes y se informa que el módulo de voluntariado aún no está disponible. Sin prometer una asignación que el sistema no puede hacer. |
-| RF-3.11 | Los datos de contacto del aportante no se publican en ninguna vista pública. La asimetría con RF-1 es deliberada: quien pide ayuda autoriza expresamente la publicación; quien la ofrece no. |
-| RF-3.12 | Al guardar: confirmación con código de radicado. |
+Derivadas del documento de datos verificados. Son requisitos.
 
-### 5.5 RF-4 — Gestión de la propia publicación
 
-| ID | Requisito |
-| --- | --- |
-| RF-4.1 | Cada necesidad genera un `manage_token` opaco. El enlace de gestión es `/mi-publicacion?code=<reference_code>&token=<manage_token>`. |
-| RF-4.2 | Con ese enlace, y sin cuenta ni inicio de sesión, la persona puede marcar la necesidad como resuelta, retirarla por completo, o corregir su descripción y su teléfono. |
-| RF-4.3 | Retirarla la excluye de inmediato de toda vista pública y de la API de filtrado. |
-| RF-4.4 | El acceso exige código y token. El token es un UUID versión 4 y nunca se muestra en el tablero ni en ninguna vista pública. |
-| RF-4.5 | El endpoint de gestión tiene límite de tasa por IP para impedir el sondeo de tokens. |
-| RF-4.6 | Un Moderador puede retirar u ocultar cualquier necesidad sin el token. |
-| RF-4.7 | Como la pérdida del enlace es previsible, existe una ruta alternativa: solicitar el retiro por el canal de contacto del aviso de privacidad, resuelto manualmente por un Moderador. |
+| ID   | Regla                                                                                                                                          |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| RI-1 | No se publica una ubicación como albergue sin confirmación oficial concreta. Hay tres albergues habilitados y solo uno identificado por nombre |
+| RI-2 | «Presenta afectaciones» nunca se traduce como «cerrado» sin confirmación de una autoridad                                                      |
+| RI-3 | No se publican nombres de personas fallecidas                                                                                                  |
+| RI-4 | No se publica una vía como cerrada a partir de videos, fotos o cadenas de mensajería                                                           |
+| RI-5 | Un vacío no se rellena con suposiciones. Se muestra el texto **«No se encontró información oficial confirmada hasta la última verificación»**  |
+| RI-6 | Todo recurso institucional guarda su fuente y su fecha de verificación, y ambas son visibles                                                   |
 
-Sin este módulo una persona no puede retirar sus datos de contacto de internet, y el tablero se llena de necesidades ya resueltas.
 
-### 5.6 RF-5 — Busco Información
 
-Módulo de solo lectura. El ciudadano no escribe nada aquí.
 
-| ID | Requisito |
-| --- | --- |
-| RF-5.1 | Listado filtrable por categoría y comuna, con búsqueda por texto sobre nombre y descripción. |
-| RF-5.2 | Categorías: Albergues · Hospitales · Centros médicos · Donación de sangre · Puntos de donación · Centros de acopio · Atención de mascotas · Personas desaparecidas · Evaluación de viviendas · Servicios públicos · Bomberos · Defensa Civil · Cruz Roja · Alcaldías · Gobernación · Líneas de atención · Cierres viales · Otros. |
-| RF-5.3 | Cada recurso muestra nombre, categoría, descripción, dirección, barrio y comuna, punto de encuentro, teléfonos, horario, fuente, estado de verificación y fecha y hora de última verificación. |
-| RF-5.4 | Los teléfonos son enlaces `tel:`. La dirección abre la aplicación de mapas del dispositivo. |
-| RF-5.5 | Estado como distintivo visual: **Verificado · Pendiente de validar · Desactualizado · Cerrado**. Color y texto; el color nunca es el único portador de la información. |
-| RF-5.6 | La fecha de última verificación es visible en la tarjeta del listado, no solo en el detalle. Si supera 72 horas, se marca visualmente como potencialmente desactualizada. |
-| RF-5.7 | Cada recurso admite de 0 a N fotos de referencia, cada una con descripción, para reconocer el lugar físicamente: fachada, entrada, punto de encuentro. Carga diferida con dimensiones reservadas. |
-| RF-5.8 | Los recursos cerrados permanecen visibles y marcados. Quien llega a un albergue cerrado necesita saber que cerró, no que no existe. |
-| RF-5.9 | Vista consolidada de líneas de atención accesible en un toque desde la pantalla principal. |
-| RF-5.10 | A diferencia del tablero, el directorio sí es indexable por buscadores. Es información institucional, no datos personales. |
+### 6.2 Estado de un recurso institucional
 
-### 5.7 RF-6 — Moderación
+Tres niveles, tomados de la clasificación del documento de origen:
 
-| ID | Requisito |
-| --- | --- |
-| RF-6.1 | Ruta protegida. Solo usuarios registrados como miembros del equipo. Sin registro público. |
-| RF-6.2 | Lista de necesidades con filtros por categoría, comuna, estado de moderación y prioridad, **incluido un filtro para las que tienen la zona sin asignar**, que es la cola de trabajo de RF-6.3b. |
-| RF-6.3 | Sobre una necesidad, el Moderador puede marcarla verificada indicando la fuente, marcarla duplicada de otra, ocultarla, retirarla y asignarle prioridad. |
-| RF-6.3b | El Moderador **asigna la comuna** a una necesidad cuyo barrio no coincidió con el catálogo, y puede añadir ese barrio al catálogo para que la próxima vez se resuelva solo. |
-| RF-6.4 | El Moderador puede retirar la foto de una necesidad sin ocultar la necesidad completa. Una foto inapropiada no debe costar la visibilidad de una necesidad legítima. |
-| RF-6.5 | Lista de aportes registrados con sus datos de contacto, para contacto proactivo. |
-| RF-6.6 | Gestión del directorio: crear, editar, publicar y despublicar recursos, cargar fotos con descripción y actualizar el estado y la fecha de verificación. |
-| RF-6.7 | Toda modificación registra autor y fecha. |
-| RF-6.8 | Exportación a CSV de la vista filtrada. |
-| RF-6.9 | Fuera de este módulo: mapas de calor, gráficas, métricas agregadas y asignación automática de recursos. |
+
+| Estado              | Significado                                           |
+| ------------------- | ----------------------------------------------------- |
+| **Confirmado**      | Fuente oficial verificada                             |
+| **En verificación** | Anunciado pero sin detalle oficial suficiente         |
+| **Cerrado**         | Ya no presta el servicio. Permanece visible y marcado |
+
+
+Un recurso confirmado hace más de 72 horas se marca como potencialmente desactualizado. El umbral se calcula en servidor.
 
 ---
 
-## 6. Tabla de emparejamiento
 
-El documento fuente define dos vocabularios distintos: categorías de necesidad y tipos de aporte. No coinciden. El emparejamiento en vivo es imposible sin una traducción explícita entre ambos.
 
-| Tipo de aporte | Categorías de necesidad que atiende |
-| --- | --- |
-| Alimentos | Alimentos |
-| Agua | Agua |
-| Ropa y cobijas | Albergue · Vivienda |
-| Medicamentos o insumos permitidos | Salud |
-| Alojamiento | Albergue · Vivienda |
-| Alimento para mascotas | Mascotas |
-| Transporte | Transporte · Movilidad y vías · Salud |
-| Vehículos | Transporte · Movilidad y vías · Remoción de escombros |
-| Maquinaria | Remoción de escombros · Movilidad y vías |
-| Herramientas | Remoción de escombros · Vivienda |
-| Servicios profesionales | Salud · Vivienda · Atención psicológica · Servicios públicos · Mascotas |
-| Tiempo como voluntario | Todas |
-| Otro | Todas |
-| Dinero | Ninguna — redirige a entidades verificadas |
+## 7. Sistema de interfaz
 
-Notas de diseño:
 
-- **Sangre** y **Personas desaparecidas** no tienen ningún tipo de aporte que las atienda. Son necesidades que se resuelven presentándose en un punto o reportando información, no aportando un recurso. Aparecen en el tablero pero nunca en un emparejamiento.
-- **Servicios profesionales** es deliberadamente amplio: un ingeniero, un veterinario y un psicólogo seleccionan el mismo tipo. Afinarlo exige un subcampo de profesión, que añade fricción contra RP-1.
-- La tabla vive en código, en `modules/matching/domain`, no en base de datos. Es lógica de negocio versionada y revisable en un diff, no un dato editable en producción.
 
----
+### 7.1 Una anatomía de tarjeta
 
-## 7. Requisitos no funcionales
+Tablero y centro de información comparten la misma tarjeta. Lo único que cambia es qué codifica la franja.
 
-### 7.1 Rendimiento
+```
+┌────────────────────────────────────┐
+│▌ ETIQUETA · TIPO · ZONA            │  franja + fila de etiquetas
+│  [img]  Título                     │  miniatura opcional
+│         Dirección o barrio         │
+│         Descripción, dos líneas    │
+│         hace 4 horas               │  tiempo o fecha de verificación
+└────────────────────────────────────┘
+```
 
-| ID | Requisito |
-| --- | --- |
-| RNF-1.1 | Largest Contentful Paint menor o igual a 2,0 s en 4G lento (400 kbps, 400 ms RTT), en pantalla principal, tablero y directorio. |
-| RNF-1.2 | Interacción a siguiente pintado menor o igual a 200 ms. |
-| RNF-1.3 | El filtrado en vivo responde en 400 ms o menos en el percentil 95. |
-| RNF-1.4 | Pantalla principal, tablero y directorio se renderizan en servidor y son utilizables sin JavaScript. |
 
-### 7.2 Presupuesto de peso
+| Superficie            | Qué codifica la franja                                         |
+| --------------------- | -------------------------------------------------------------- |
+| Tablero               | Estado de la publicación: sin verificar, verificada, atendida  |
+| Centro de información | Frescura: confirmado, en verificación, desactualizado, cerrado |
 
-| Ruta | JavaScript (gzip) | Total inicial |
-| --- | --- | --- |
-| Pantalla principal | ≤ 30 KB | ≤ 120 KB |
-| Necesito Ayuda | ≤ 60 KB | ≤ 180 KB |
-| Quiero Ayudar | ≤ 75 KB | ≤ 200 KB |
-| Tablero | ≤ 50 KB | ≤ 200 KB sin fotos |
-| Directorio | ≤ 50 KB | ≤ 200 KB sin fotos |
 
-Superar el presupuesto es un fallo de build, no una advertencia. Quiero Ayudar tiene 15 KB adicionales sobre el resto de los formularios porque es el único cliente interactivo de la aplicación, y debe implementarse sin librerías de estado ni de peticiones.
+Ningún estado se comunica solo con color. La etiqueta siempre lleva texto.
 
-### 7.3 Disponibilidad y resiliencia
+### 7.2 Inventario de pantallas
 
-| ID | Requisito |
-| --- | --- |
-| RNF-3.1 | Si la base de datos no responde al enviar un formulario, el usuario recibe un mensaje claro más las líneas de emergencia oficiales. Nunca un error técnico crudo. |
-| RNF-3.2 | Si el emparejamiento en vivo falla, el formulario sigue siendo enviable. Un fallo de coincidencias nunca bloquea el registro de un aporte. |
-| RNF-3.3 | El directorio y el tablero se sirven desde caché con revalidación. Una caída de base de datos no debe dejar inaccesible la información de albergues. |
-| RNF-3.4 | PWA con service worker que cachea la pantalla principal, el directorio y la primera página del tablero para consulta sin conexión. |
-| RNF-3.5 | Los envíos de formulario no se encolan sin conexión. Un reporte que el usuario cree enviado y que no llegó es peor que un error visible. |
 
-### 7.4 Accesibilidad
+| Ruta                  | Contenido                                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| `/`                   | Estado de la ciudad, alertas vigentes, tres acciones, líneas de emergencia, publicaciones recientes |
+| `/necesito-ayuda`     | Formulario de una pantalla                                                                          |
+| `/necesidades`        | Tablero con filtros y búsqueda                                                                      |
+| `/necesidades/[code]` | Detalle de una publicación                                                                          |
+| `/quiero-ayudar`      | Filtro guiado sobre el tablero                                                                      |
+| `/mi-publicacion`     | Gestión con código y token                                                                          |
+| `/informacion`        | Directorio filtrable                                                                                |
+| `/informacion/[slug]` | Detalle de un recurso                                                                               |
+| `/lineas-atencion`    | Líneas consolidadas                                                                                 |
+| `/que-hacer`          | Guía de actuación                                                                                   |
+| `/moderacion`         | Protegido                                                                                           |
 
-| ID | Requisito |
-| --- | --- |
-| RNF-4.1 | WCAG 2.1 nivel AA como mínimo. |
-| RNF-4.2 | Contraste mínimo de 4,5:1 en texto normal. Objetivos táctiles de 48 × 48 px o más. |
-| RNF-4.3 | Los formularios son navegables y completables solo con teclado y con lector de pantalla. |
-| RNF-4.4 | Los errores de validación se anuncian y se asocian programáticamente a su campo. |
-| RNF-4.5 | Ningún estado se comunica únicamente por color. |
-| RNF-4.6 | El contador de coincidencias en vivo se anuncia en una región `aria-live="polite"`. Un cambio silencioso de contenido es invisible para un lector de pantalla. |
-| RNF-4.7 | Toda foto de referencia del directorio tiene texto alternativo obligatorio en la interfaz de edición. |
 
-### 7.5 Idioma
 
-Español de Colombia en toda la interfaz, con registro neutro y llano, sin jerga técnica ni institucional. El código, los identificadores y los comentarios en inglés.
+
+### 7.3 Paleta
+
+Cada tono está hablado por algo. El rojo se reserva a marcar líneas de emergencia y no se usa en decoración.
+
+
+| Rol     | Uso                                                          |
+| ------- | ------------------------------------------------------------ |
+| Navy    | Voz institucional, cabeceras, acción principal               |
+| Rojo    | Únicamente marcar una línea de emergencia                    |
+| Verde   | Información confirmada recientemente                         |
+| Ámbar   | Información que envejeció más allá de lo confiable           |
+| Pizarra | Recurso cerrado: presente, legible, claramente no disponible |
+
 
 ---
 
-## 8. Seguridad y privacidad
 
-### 8.1 Qué publica la plataforma
 
-La plataforma publica en internet abierto el nombre, el teléfono, la categoría de necesidad, el barrio, la comuna, la ubicación aproximada y la foto de personas que acaban de sufrir una emergencia. Sin autenticación, sin barrera y sin verificación previa.
+## 8. Requisitos funcionales
 
-Es el requisito central del producto: reduce la fricción a cero y permite que un vecino con un carro llame en treinta segundos. La ingeniería lo implementa y lo endurece hasta donde es posible sin contradecirlo.
 
-Las mitigaciones están en §8.2. Lo que ninguna mitigación resuelve está en §8.3, y debe constar en el aviso de privacidad.
 
-### 8.2 Mitigaciones
+### 8.1 RF-0 — Pantalla principal
 
-| ID | Mitigación | Qué reduce |
-| --- | --- | --- |
-| RNF-5.1 | La clave anónima nunca se publica al navegador (§4.2). | Elimina el endpoint REST público. La extracción masiva pasa de una llamada a raspar HTML paginado. |
-| RNF-5.2 | El rol `anon` no accede a la tabla de necesidades. Accede solo a una vista que expone columnas explícitas y filtra por estado. | Evita que un cambio futuro exponga columnas internas o registros retirados. |
-| RNF-5.3 | Tope duro de 20 filas por consulta, en el tablero y en la API de filtrado. Sin parámetro que lo eleve. | Hace el coste de extracción proporcional al número de peticiones. |
-| RNF-5.4 | Límite de tasa por IP: 5 escrituras cada 10 minutos en formularios; 60 lecturas por minuto en el filtrado; 10 intentos cada 10 minutos en gestión de publicación. | Raspado automatizado y sondeo de tokens. |
-| RNF-5.5 | `noindex, nofollow` y exclusión en `robots.txt` para tablero, detalle y gestión. | Impide que los teléfonos queden indexados y sigan siendo encontrables en buscadores años después. Es la mitigación con mejor relación entre valor y esfuerzo. |
-| RNF-5.6 | Coordenadas redondeadas a tres decimales, unos 110 metros, en la vista pública. Las exactas quedan solo para el Moderador. | La ubicación precisa de una vivienda deja de ser pública sin perder utilidad para llegar al sector. |
-| RNF-5.7 | **Eliminación de todos los metadatos de la imagen en el servidor antes de almacenarla.** Se reescribe el archivo conservando solo los píxeles. | Una foto tomada con un celular lleva coordenadas GPS exactas en su EXIF. Publicarla sin limpiar anularía por completo el redondeo de RNF-5.6 y expondría la vivienda con precisión de metros, además de modelo de dispositivo y fecha. Sin esta mitigación, la decisión de hacer pública la foto sería incompatible con RNF-5.6. |
-| RNF-5.8 | Las fotos se almacenan en rutas basadas en UUID, en un bucket de lectura pública sin listado. | Enumeración del conjunto completo de fotos. |
-| RNF-5.9 | Caducidad automática: una necesidad se oculta a los 14 días sin actividad; las atendidas, a las 48 horas. | Acota la ventana de exposición en el tiempo. |
-| RNF-5.10 | Retiro autónomo por la propia persona, sin cuenta (RF-4). | Sin esto no habría forma de revertir la exposición, lo que sería indefendible. |
-| RNF-5.11 | El Moderador puede retirar una foto sin ocultar la necesidad (RF-6.4). | Contenido inapropiado en un canal público sin verificación previa. |
-| RNF-5.12 | Aviso antifraude permanente en el tablero y advertencia destacada antes del campo de teléfono. | Estafas por suplantación de ayuda, que son el abuso más previsible de este modelo. |
-| RNF-5.13 | Los datos de contacto de los aportantes no se publican. | Limita la exposición a quien la autorizó expresamente. |
-| RNF-5.14 | RLS habilitado en todas las tablas. La clave `service_role` nunca llega al cliente. | Base del modelo de acceso. |
-| RNF-5.15 | Privilegios a nivel de columna, además de las políticas RLS, en las escrituras anónimas. | Un `WITH CHECK` rechaza una fila, pero solo un privilegio por columna impide que el rol anónimo suministre prioridad o estado de moderación. |
-| RNF-5.16 | Validación con Zod en el servidor en toda escritura. La validación de cliente es solo experiencia de usuario. | Escrituras malformadas o maliciosas. |
-| RNF-5.17 | Topes de longitud en todo campo de texto libre. | Cargas de varios megabytes en un formulario público sin autenticación. |
-| RNF-5.18 | Sin CAPTCHA. Es fricción directa contra RP-1 y RP-3. Se acepta el riesgo y se mitiga con RNF-5.4 más moderación reactiva. Reevaluable ante abuso real. | Decisión consciente, no omisión. |
-| RNF-5.19 | Sin analítica de terceros ni píxeles de seguimiento en ninguna ruta que muestre o capture datos personales. | Fuga a terceros. |
 
-### 8.3 Lo que no queda mitigado
+| ID     | Requisito                                                                                                                                   |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-0.1 | Tres acciones: **NECESITO AYUDA**, **QUIERO AYUDAR**, **BUSCO INFORMACIÓN**, cada una en un bloque táctil de 96 px de alto mínimo           |
+| RF-0.2 | Sin carrusel ni texto introductorio largo                                                                                                   |
+| RF-0.3 | Líneas de emergencia como enlaces `tel:` directos, sin pasar por un formulario. Los números vienen del centro de información, no del código |
+| RF-0.4 | Aviso permanente: esta plataforma no reemplaza a la línea de emergencia oficial                                                             |
+| RF-0.5 | **Alertas vigentes** en primer lugar cuando existan, con su fuente y su vencimiento                                                         |
+| RF-0.6 | **Estado de la ciudad**: balance oficial con fuente y hora de corte visibles. Nunca se cuentan publicaciones de la propia plataforma        |
+| RF-0.7 | Publicaciones recientes del tablero                                                                                                         |
+| RF-0.8 | Enlaces secundarios a **Ver todas las necesidades** y **Gestionar mi publicación**                                                          |
 
-Enunciado explícitamente para que la aceptación del modelo sea informada.
 
-1. **Cualquier persona puede leer los teléfonos y ver las fotos.** Es el requisito, no un defecto. Ninguna mitigación lo cambia.
-2. **La extracción masiva sigue siendo posible**, solo más costosa. Un raspador paciente con direcciones IP rotativas obtiene el conjunto completo.
-3. **La exposición no es reversible en la práctica.** El retiro la quita de la plataforma, no de las copias que un tercero ya haya hecho.
-4. **No hay verificación de identidad al publicar.** Cualquiera puede publicar el teléfono de otra persona como si fuera el suyo, y la moderación es reactiva, así que el daño precede a la corrección. Es el riesgo más grave del modelo y no tiene solución dentro de las restricciones elegidas.
-5. **Una foto puede revelar más de lo que su autor pretendía**: rostros de terceros, el interior de una vivienda, la fachada que permite ubicarla. La limpieza de metadatos elimina la geolocalización incrustada, y la advertencia del formulario reduce el error, pero el contenido visible de la imagen es responsabilidad de quien la sube y solo se corrige de forma reactiva.
-6. **Las estafas dirigidas son previsibles.** Un listado público de personas vulnerables con teléfono y necesidad declarada es un objetivo de valor. El aviso antifraude advierte; no protege.
 
-### 8.4 Tratamiento de datos personales
 
-| ID | Requisito |
-| --- | --- |
-| RNF-6.1 | Dos consentimientos separados y granulares, sin marcar por defecto. La Ley 1581 de 2012 exige autorización informada para una finalidad determinada, y la divulgación pública de los datos de contacto y de la imagen es una finalidad distinta del tratamiento interno; agruparlas en una sola casilla haría la autorización jurídicamente frágil. |
-| RNF-6.2 | Se almacena el momento de cada consentimiento, no un valor booleano. Un booleano no prueba cuándo se autorizó. |
-| RNF-6.3 | Aviso de privacidad accesible que declare finalidad, responsable del tratamiento, el carácter público del nombre, el teléfono y la foto, con quién se comparte, tiempo de conservación, canal para ejercer derechos y canal alternativo de retiro. |
-| RNF-6.4 | El responsable del tratamiento debe ser una entidad jurídica identificada. |
-| RNF-6.5 | Los datos de contacto de aportantes no se muestran públicamente. |
-| RNF-6.6 | Conservación de 12 meses. Después, anonimización de nombre, teléfono, correo y coordenadas, y eliminación de la foto, conservando los campos agregables —categoría, comuna, fecha— con fines estadísticos. |
-| RNF-6.7 | Derecho de supresión atendible sin cuenta y por canal manual. |
+### 8.2 RF-1 — Necesito ayuda
 
-### 8.5 Matriz de acceso
 
-| Objeto | Rol `anon` | Rol autenticado del equipo |
-| --- | --- | --- |
-| `comunas`, `neighborhoods` | `SELECT` de los registros activos. El formulario alimenta su autocompletado desde `neighborhoods`, y los filtros de zona desde `comunas`. | Todo |
-| `help_requests` (tabla) | Sin acceso de lectura ni de modificación. `INSERT` restringido a una lista explícita de columnas. | `SELECT`, `UPDATE` |
-| `public_help_requests` (vista) | `SELECT`. Columnas acotadas, coordenadas redondeadas, filtrada a estados públicos y no caducados. | `SELECT` |
-| `help_offers` | `INSERT` en columnas explícitas. Sin `SELECT`. | `SELECT`, `UPDATE` |
-| `info_resources` | `SELECT` donde esté publicado | Todo |
-| `info_resource_photos` | `SELECT` de recursos publicados | Todo |
-| `staff_members` | Sin acceso | `SELECT` |
-| `moderation_log` | Sin acceso | `SELECT`, `INSERT`. Sin `UPDATE` ni `DELETE`. |
+| ID      | Requisito                                                                                                                                                                                                                                 |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-1.1  | Formulario de una sola pantalla, sin asistente por pasos                                                                                                                                                                                  |
+| RF-1.2  | Obligatorios: categoría, descripción, barrio o sector, nombre, teléfono y los dos consentimientos. No se pide municipio                                                                                                                   |
+| RF-1.3  | Opcionales: dirección, número de afectados, ubicación en mapa, foto                                                                                                                                                                       |
+| RF-1.4  | Categorías: Salud · Vivienda y daños estructurales · Albergue · Alimentos · Agua · Sangre · Mascotas · Movilidad y vías · Servicios públicos · Personas desaparecidas · Atención psicológica · Transporte · Remoción de escombros · Otros |
+| RF-1.5  | Advertencia destacada, antes del campo de teléfono, de que el nombre, el teléfono y la foto serán públicos en internet. No es letra pequeña                                                                                               |
+| RF-1.6  | Dos casillas de consentimiento separadas y sin marcar: tratamiento de datos, y publicación pública. Sin ambas no se envía                                                                                                                 |
+| RF-1.7  | La geolocalización solo se activa por acción explícita. Si se deniega, el barrio en texto basta                                                                                                                                           |
+| RF-1.8  | El barrio es texto con autocompletado contra el catálogo. Si coincide, se registra la comuna. **Si no coincide, se guarda el texto y la zona queda sin asignar.** Nunca se rechaza por un barrio ausente                                  |
+| RF-1.9  | Foto opcional, un archivo, comprimida en cliente con objetivo de 500 KB. Es pública                                                                                                                                                       |
+| RF-1.10 | Advertencia junto al campo de foto: no incluir personas identificables ni documentos                                                                                                                                                      |
+| RF-1.11 | Todos los metadatos de la imagen se eliminan en servidor antes de almacenarla                                                                                                                                                             |
+| RF-1.12 | Se publica de inmediato con estado «Sin verificar». Sin cola de aprobación                                                                                                                                                                |
+| RF-1.13 | La prioridad no se calcula. Nace sin prioridad y solo un Moderador la asigna                                                                                                                                                              |
+| RF-1.14 | Confirmación con código de radicado, enlace de gestión e instrucción explícita de guardarlo                                                                                                                                               |
+| RF-1.15 | La plataforma no emite juicios sobre daños estructurales, condiciones médicas ni seguridad de un lugar                                                                                                                                    |
 
-La gestión de la propia publicación no se resuelve con RLS: se ejecuta en una Server Action que valida código y token y luego escribe con `service_role`. El token nunca se convierte en una credencial de base de datos.
+
+
+
+### 8.3 RF-2 — Tablero
+
+
+| ID      | Requisito                                                                                                                                                                     |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-2.1  | Sin autenticación. Publicaciones más recientes primero                                                                                                                        |
+| RF-2.2  | Filtros por categoría y comuna desde su catálogo, más **«zona sin asignar»**. Búsqueda por texto sobre descripción y barrio                                                   |
+| RF-2.3  | Tope duro de 20 elementos por página. No existe parámetro que devuelva el conjunto completo                                                                                   |
+| RF-2.4  | Cada tarjeta: categoría, estado, antigüedad, barrio escrito y comuna cuando esté resuelta, descripción, afectados, nombre y teléfono como `tel:`                              |
+| RF-2.5  | Una publicación con zona sin asignar **aparece igual que las demás**. Quien vive en un asentamiento informal o una vereda sin registrar es de quien menos se puede prescindir |
+| RF-2.6  | Estado con color y texto: **Sin verificar · Verificada**, con su fuente **· Atendida · Duplicada**                                                                            |
+| RF-2.7  | Las atendidas permanecen visibles 48 horas marcadas y luego se ocultan. Quien va en camino necesita saber que se resolvió, no que desapareció                                 |
+| RF-2.8  | Detalle por código de radicado, con ubicación aproximada y foto cuando existan                                                                                                |
+| RF-2.9  | Aviso antifraude permanente: nadie legítimo pedirá dinero, datos bancarios ni códigos a cambio de ayudar                                                                      |
+| RF-2.10 | Las ocultas y retiradas no aparecen en ninguna vista pública                                                                                                                  |
+| RF-2.11 | Tablero y detalle se sirven con `noindex, nofollow` y quedan excluidos en `robots.txt`                                                                                        |
+
+
+
+
+### 8.4 RF-3 — Quiero ayudar
+
+**Es un filtro sobre el tablero. No registra a nadie.**
+
+
+| ID      | Requisito                                                                                                                                                                                                                                   |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-3.1  | Primera pregunta: **¿Cómo puedes ayudar?**                                                                                                                                                                                                  |
+| RF-3.2  | Tipos: Dinero · Alimentos · Agua · Ropa y cobijas · Medicamentos o insumos permitidos · Transporte · Vehículos · Maquinaria · Herramientas · Alojamiento · Alimento para mascotas · Servicios profesionales · Tiempo como voluntario · Otro |
+| RF-3.3  | Segundo campo, opcional: comuna, para acotar                                                                                                                                                                                                |
+| RF-3.4  | Al seleccionar, la misma pantalla muestra el número de publicaciones que corresponden y una lista de hasta 20, con enlace al detalle y teléfono como `tel:`                                                                                 |
+| RF-3.5  | Sin comuna seleccionada, el filtro abarca todo Manizales, **incluidas las de zona sin asignar**. Filtrar por comuna acota; nunca es requisito                                                                                               |
+| RF-3.6  | La correspondencia entre tipo de aporte y categoría se resuelve con la tabla de la sección 9. No es coincidencia de cadenas                                                                                                                 |
+| RF-3.7  | Sin coincidencias, se dice explícitamente y se ofrece el tablero completo. Nunca una lista vacía sin explicación                                                                                                                            |
+| RF-3.8  | **Sin JavaScript el filtro funciona igual**: es un `<form method="get">` y los criterios viven en la URL. La página es compartible                                                                                                          |
+| RF-3.9  | Si el tipo es Dinero, no se captura ningún dato financiero, no se filtra y se remite a las entidades del centro de información. La plataforma no recibe ni custodia dinero                                                                  |
+| RF-3.10 | Si el tipo es Tiempo como voluntario, se muestran las coincidencias y se informa que el módulo de voluntariado no está disponible. Sin prometer una asignación que el sistema no puede hacer                                                |
+| RF-3.11 | **No se almacenan datos de quien ayuda.** No hay registro, código ni bandeja. La conexión la hace la persona llamando                                                                                                                       |
+
+
+
+
+### 8.5 RF-4 — Gestión de la propia publicación
+
+
+| ID     | Requisito                                                                                                 |
+| ------ | --------------------------------------------------------------------------------------------------------- |
+| RF-4.1 | Cada publicación genera un `manage_token` opaco. El enlace es `/mi-publicacion?code=<code>&token=<token>` |
+| RF-4.2 | Con ese enlace, sin cuenta, la persona la cierra, la retira, o corrige descripción y teléfono             |
+| RF-4.3 | Retirarla la excluye de inmediato de toda vista pública                                                   |
+| RF-4.4 | Exige código y token. El token es UUID v4 y nunca aparece en ninguna vista pública                        |
+| RF-4.5 | Límite de tasa por IP para impedir el sondeo de tokens                                                    |
+| RF-4.6 | Un Moderador puede retirar u ocultar sin el token                                                         |
+| RF-4.7 | Como perder el enlace es previsible, existe retiro manual por el canal del aviso de privacidad            |
+
+
+Sin este módulo una persona no puede retirar sus datos de internet.
+
+### 8.6 RF-5 — Centro de información
+
+Solo lectura. El ciudadano no escribe aquí.
+
+
+| ID      | Requisito                                                                                                                                                                                                                                                                                                                        |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-5.1  | Listado filtrable por categoría y comuna, con búsqueda sobre nombre y descripción. «hospi» encuentra «Hospital»                                                                                                                                                                                                                  |
+| RF-5.2  | Categorías: Albergues · Hospitales · Centros médicos · Donación de sangre · Puntos de donación · Centros de acopio · Atención de mascotas · Personas desaparecidas · Evaluación de viviendas · Servicios públicos · Bomberos · Defensa Civil · Cruz Roja · Alcaldías · Gobernación · Líneas de atención · Cierres viales · Otros |
+| RF-5.3  | Cada recurso: nombre, categoría, descripción, dirección, barrio y comuna, punto de encuentro, teléfonos, horario, **fuente** y **fecha de última verificación**                                                                                                                                                                  |
+| RF-5.4  | Los teléfonos son enlaces `tel:`. La dirección abre la aplicación de mapas                                                                                                                                                                                                                                                       |
+| RF-5.5  | Cuando un número atiende por menú, **el dígito de opción va en la descripción, nunca en el número marcado**. Marcar «123 opción 2» como 1232 llamaría a un número inexistente                                                                                                                                                    |
+| RF-5.6  | Estado con color y texto según §6.2. La fecha de verificación es visible en la tarjeta, no solo en el detalle                                                                                                                                                                                                                    |
+| RF-5.7  | De 0 a N fotos de referencia con texto alternativo obligatorio, para reconocer el lugar. Carga diferida con dimensiones reservadas                                                                                                                                                                                               |
+| RF-5.8  | Los recursos cerrados permanecen visibles y marcados                                                                                                                                                                                                                                                                             |
+| RF-5.9  | **Alertas vigentes**: aviso con fuente y vencimiento. Una alerta vencida deja de mostrarse como vigente                                                                                                                                                                                                                          |
+| RF-5.10 | **Guía de actuación** en `/que-hacer`: qué hacer ante grieta, gas, cables caídos, fuga de agua, persona herida, persona atrapada, réplica, acompañamiento a niños y adultos mayores, y mascotas. Cada escenario termina en el número que corresponde. Contenido estático, sin base de datos                                      |
+| RF-5.11 | Vista consolidada de líneas de atención, accesible en un toque desde la pantalla principal                                                                                                                                                                                                                                       |
+| RF-5.12 | A diferencia del tablero, el centro de información **sí es indexable**. Es información institucional, no datos personales                                                                                                                                                                                                        |
+| RF-5.13 | Cuando un dato no está confirmado se aplica RI-5, con su texto exacto                                                                                                                                                                                                                                                            |
+
+
+
+
+### 8.7 RF-6 — Moderación
+
+
+| ID     | Requisito                                                                                                                                                                |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| RF-6.1 | Ruta protegida. Solo miembros del equipo. Sin registro público                                                                                                           |
+| RF-6.2 | Lista con filtros por categoría, comuna, estado y prioridad, **incluido el filtro de zona sin asignar**, que es la cola de trabajo de RF-6.4                             |
+| RF-6.3 | Verificar indicando fuente, marcar duplicada, ocultar, retirar y asignar prioridad                                                                                       |
+| RF-6.4 | Asignar la comuna a una publicación cuyo barrio no coincidió, y añadir ese barrio al catálogo                                                                            |
+| RF-6.5 | Retirar la foto sin ocultar la publicación. Una foto inapropiada no debe costar la visibilidad de una necesidad legítima                                                 |
+| RF-6.6 | Mantener el centro de información: crear, editar, publicar y despublicar recursos, cargar fotos con texto alternativo, actualizar estado, fuente y fecha de verificación |
+| RF-6.7 | Publicar y vencer alertas                                                                                                                                                |
+| RF-6.8 | Toda modificación registra autor y fecha                                                                                                                                 |
+| RF-6.9 | Fuera de alcance: mapas de calor, gráficas, métricas agregadas, exportación y asignación automática                                                                      |
+
+
+---
+
+
+
+## 9. Traducción de aporte a categoría
+
+Los dos vocabularios del documento fuente no coinciden. El filtro de «Quiero ayudar» es imposible sin traducción explícita.
+
+
+| Tipo de aporte                    | Categorías que atiende                                                  |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| Alimentos                         | Alimentos                                                               |
+| Agua                              | Agua                                                                    |
+| Ropa y cobijas                    | Albergue · Vivienda                                                     |
+| Medicamentos o insumos permitidos | Salud                                                                   |
+| Alojamiento                       | Albergue · Vivienda                                                     |
+| Alimento para mascotas            | Mascotas                                                                |
+| Transporte                        | Transporte · Movilidad y vías · Salud                                   |
+| Vehículos                         | Transporte · Movilidad y vías · Remoción de escombros                   |
+| Maquinaria                        | Remoción de escombros · Movilidad y vías                                |
+| Herramientas                      | Remoción de escombros · Vivienda                                        |
+| Servicios profesionales           | Salud · Vivienda · Atención psicológica · Servicios públicos · Mascotas |
+| Tiempo como voluntario            | Todas                                                                   |
+| Otro                              | Todas                                                                   |
+| Dinero                            | Ninguna — remite a entidades del centro de información                  |
+
+
+- **Sangre** y **Personas desaparecidas** no tienen aporte que las atienda: se resuelven presentándose en un punto o reportando información. Aparecen en el tablero, nunca en el filtro.
+- **Servicios profesionales** es deliberadamente amplio. Afinarlo exige un subcampo de profesión, que añade fricción contra RP-1.
+- La tabla vive en código, no en base de datos. Es lógica revisable en un diff.
+
+---
+
+
+
+## 10. Requisitos no funcionales
+
+
+
+### 10.1 Rendimiento
+
+
+| ID      | Requisito                                                                                                          |
+| ------- | ------------------------------------------------------------------------------------------------------------------ |
+| RNF-1.1 | Pantalla principal, tablero y centro de información se renderizan en servidor y son utilizables sin JavaScript     |
+| RNF-1.2 | Objetivo de Largest Contentful Paint de 2,0 s en 4G lento. Se mide antes de publicar; no es una compuerta de build |
+| RNF-1.3 | Sin librerías de estado ni de peticiones en cliente                                                                |
+
+
+
+
+### 10.2 Resiliencia
+
+
+| ID      | Requisito                                                                                                                                         |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RNF-2.1 | Si la base de datos no responde al enviar, el usuario recibe un mensaje claro más las líneas de emergencia. Nunca un error técnico crudo          |
+| RNF-2.2 | Si el filtro falla, la pantalla sigue siendo utilizable                                                                                           |
+| RNF-2.3 | Tablero y centro de información se sirven desde caché con revalidación. Una caída de base de datos no debe dejar inaccesibles los albergues       |
+| RNF-2.4 | Las líneas de emergencia tienen un valor de último recurso en el código: si el directorio no responde, la pantalla principal sigue ofreciendo 123 |
+
+
+
+
+### 10.3 Accesibilidad
+
+
+| ID      | Requisito                                                               |
+| ------- | ----------------------------------------------------------------------- |
+| RNF-3.1 | WCAG 2.1 AA como mínimo                                                 |
+| RNF-3.2 | Contraste 4,5:1 en texto normal. Objetivos táctiles de 48 × 48 px       |
+| RNF-3.3 | Formularios navegables solo con teclado y con lector de pantalla        |
+| RNF-3.4 | Errores de validación anunciados y asociados a su campo                 |
+| RNF-3.5 | Ningún estado se comunica únicamente por color                          |
+| RNF-3.6 | Toda foto lleva texto alternativo obligatorio en la interfaz de edición |
+| RNF-3.7 | Con zoom al 200 % no hay desplazamiento horizontal                      |
+
+
+
+
+### 10.4 Idioma
+
+Español de Colombia en la interfaz, registro neutro y llano. Código, identificadores y comentarios en inglés.
+
+---
+
+
+
+## 11. Seguridad y privacidad
+
+
+
+### 11.1 Qué publica la plataforma
+
+La plataforma publica en internet abierto el nombre, el teléfono, la categoría, el barrio, la ubicación aproximada y la foto de personas que acaban de sufrir una emergencia. Sin autenticación y sin verificación previa.
+
+Es el requisito central: reduce la fricción a cero y permite que un vecino con un carro llame en treinta segundos. La ingeniería lo implementa y lo endurece hasta donde es posible sin contradecirlo.
+
+### 11.2 Mitigaciones
+
+
+| ID       | Mitigación                                                                                                                                                                                                                                               |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RNF-4.1  | La clave anónima nunca llega al navegador (§5.2)                                                                                                                                                                                                         |
+| RNF-4.2  | El rol `anon` no accede a la tabla de publicaciones, solo a una vista con columnas explícitas filtrada por estado                                                                                                                                        |
+| RNF-4.3  | Tope duro de 20 filas por consulta. Sin parámetro que lo eleve                                                                                                                                                                                           |
+| RNF-4.4  | Límite de tasa por IP en escritura y en gestión de publicación                                                                                                                                                                                           |
+| RNF-4.5  | `noindex, nofollow` y exclusión en `robots.txt` para tablero, detalle y gestión. Impide que los teléfonos queden indexados y encontrables años después                                                                                                   |
+| RNF-4.6  | Coordenadas redondeadas a tres decimales, unos 110 metros, en la vista pública                                                                                                                                                                           |
+| RNF-4.7  | **Eliminación de todos los metadatos de la imagen en servidor antes de almacenarla.** Una foto de celular lleva coordenadas GPS exactas en su EXIF; publicarla sin limpiar anularía el redondeo anterior y expondría la vivienda con precisión de metros |
+| RNF-4.8  | Fotos en rutas basadas en UUID, en un bucket sin listado                                                                                                                                                                                                 |
+| RNF-4.9  | Caducidad automática: se oculta a los 14 días sin actividad; las atendidas, a las 48 horas                                                                                                                                                               |
+| RNF-4.10 | Retiro autónomo sin cuenta (RF-4). Sin esto la exposición sería irreversible                                                                                                                                                                             |
+| RNF-4.11 | El Moderador puede retirar una foto sin ocultar la publicación                                                                                                                                                                                           |
+| RNF-4.12 | Aviso antifraude permanente y advertencia destacada antes del campo de teléfono                                                                                                                                                                          |
+| RNF-4.13 | **No se almacenan datos de quien ayuda**, porque «Quiero ayudar» no registra                                                                                                                                                                             |
+| RNF-4.14 | RLS en todas las tablas. `service_role` nunca llega al cliente                                                                                                                                                                                           |
+| RNF-4.15 | Privilegios por columna además de RLS en las escrituras anónimas. Un `WITH CHECK` rechaza una fila, pero solo un privilegio por columna impide que el rol anónimo suministre prioridad o estado                                                          |
+| RNF-4.16 | Validación con Zod en servidor en toda escritura                                                                                                                                                                                                         |
+| RNF-4.17 | Topes de longitud en todo campo de texto libre                                                                                                                                                                                                           |
+| RNF-4.18 | Sin CAPTCHA. Es fricción directa contra RP-1 y RP-3. Riesgo aceptado, mitigado con RNF-4.4 y moderación reactiva                                                                                                                                         |
+| RNF-4.19 | Sin analítica de terceros ni píxeles de seguimiento                                                                                                                                                                                                      |
+
+
+
+
+### 11.3 Lo que no queda mitigado
+
+Enunciado para que la aceptación sea informada.
+
+1. **Cualquiera puede leer los teléfonos y ver las fotos.** Es el requisito, no un defecto.
+2. **La extracción masiva sigue siendo posible**, solo más costosa.
+3. **La exposición no es reversible en la práctica.** El retiro la quita de la plataforma, no de las copias que un tercero ya hizo.
+4. **No hay verificación de identidad al publicar.** Cualquiera puede publicar el teléfono de otra persona. La moderación es reactiva, así que el daño precede a la corrección. Es el riesgo más grave y no tiene solución dentro de las restricciones elegidas.
+5. **Una foto puede revelar más de lo que su autor pretendía.** La limpieza de metadatos elimina la geolocalización; el contenido visible solo se corrige de forma reactiva.
+6. **Las estafas dirigidas son previsibles.** Un listado público de personas vulnerables con teléfono es un objetivo de valor. El aviso advierte; no protege.
+
+
+
+### 11.4 Tratamiento de datos personales
+
+
+| ID      | Requisito                                                                                                                                                                                          |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RNF-5.1 | Dos consentimientos separados y sin marcar. La Ley 1581 de 2012 exige autorización informada por finalidad determinada, y la divulgación pública es una finalidad distinta del tratamiento interno |
+| RNF-5.2 | Se almacena el momento de cada consentimiento, no un booleano. Un booleano no prueba cuándo se autorizó                                                                                            |
+| RNF-5.3 | Aviso de privacidad con finalidad, responsable, carácter público de los datos, conservación, canal de derechos y canal alternativo de retiro                                                       |
+| RNF-5.4 | El responsable debe ser una entidad jurídica identificada                                                                                                                                          |
+| RNF-5.5 | Conservación de 12 meses. Después, anonimización y eliminación de la foto, conservando categoría, comuna y fecha                                                                                   |
+| RNF-5.6 | Derecho de supresión atendible sin cuenta                                                                                                                                                          |
+
+
+
+
+### 11.5 Matriz de acceso
+
+
+| Objeto                         | `anon`                                                  | Equipo autenticado                           |
+| ------------------------------ | ------------------------------------------------------- | -------------------------------------------- |
+| `comunas`, `neighborhoods`     | `SELECT` de los activos                                 | Todo                                         |
+| `help_requests` (tabla)        | Sin lectura. `INSERT` restringido a columnas explícitas | `SELECT`, `UPDATE`                           |
+| `public_help_requests` (vista) | `SELECT`. Columnas acotadas, coordenadas redondeadas    | `SELECT`                                     |
+| `info_resources`               | `SELECT` donde esté publicado                           | Todo                                         |
+| `info_resource_photos`         | `SELECT` de recursos publicados                         | Todo                                         |
+| `staff_members`                | Sin acceso                                              | `SELECT`                                     |
+| `moderation_log`               | Sin acceso                                              | `SELECT`, `INSERT`. Sin `UPDATE` ni `DELETE` |
+
+
+La gestión de la propia publicación no se resuelve con RLS: una Server Action valida código y token y luego escribe con `service_role`. El token nunca se convierte en credencial de base de datos.
 
 Las políticas del equipo verifican pertenencia a `staff_members`. Estar autenticado no basta.
 
 ---
 
-## 9. Modelo de datos
 
-PostgreSQL. Nombres en inglés, `snake_case`. El DDL completo está en [`docs/data-model.sql`](./data-model.sql), que es la fuente de verdad de tipos, restricciones, índices y políticas. Esta sección explica las decisiones; las columnas no se duplican aquí porque dos copias del mismo esquema divergen.
 
-### 9.1 Entidades
+## 12. Modelo de datos
 
-| Tabla | Propósito | Lectura anónima |
-| --- | --- | --- |
-| `comunas` | Catálogo de comunas y corregimientos de Manizales. Eje de filtrado por zona | Sí, los activos. |
-| `neighborhoods` | Catálogo de barrios, cada uno con su comuna. Alimenta el autocompletado | Sí, los activos. |
-| `help_requests` | Necesidades publicadas por ciudadanos | No. Solo a través de la vista. |
-| `public_help_requests` (vista) | Proyección pública acotada de las necesidades | Sí. Única superficie pública. |
-| `help_offers` | Aportes registrados | No. Nunca. |
-| `info_resources` | Directorio de recursos | Sí, donde esté publicado. |
-| `info_resource_photos` | Fotos de referencia del directorio | Sí, de recursos publicados. |
-| `staff_members` | Pertenencia al rol Moderador | No. |
-| `moderation_log` | Auditoría de acciones | No. |
+PostgreSQL, nombres en inglés, `snake_case`. El DDL es `[docs/data-model.sql](./data-model.sql)`.
 
-### 9.2 Claves
+### 12.1 Entidades
 
-Clave primaria `BIGINT GENERATED ALWAYS AS IDENTITY` en todas las tablas, salvo `staff_members`, cuya clave es un `uuid` porque es una clave foránea hacia `auth.users` y ese tipo no lo elegimos nosotros.
 
-La opacidad que el sistema necesita no es la de la clave primaria, sino la de dos valores distintos, que son columnas propias:
+| Tabla                          | Propósito                                         | Lectura anónima              |
+| ------------------------------ | ------------------------------------------------- | ---------------------------- |
+| `comunas`                      | Comunas y corregimientos. Eje de filtrado         | Sí, los activos              |
+| `neighborhoods`                | Barrios con su comuna. Alimenta el autocompletado | Sí, los activos              |
+| `help_requests`                | Publicaciones del tablero                         | No. Solo por la vista        |
+| `public_help_requests` (vista) | Proyección pública acotada                        | Sí. Única superficie pública |
+| `info_resources`               | Contenido institucional                           | Sí, donde esté publicado     |
+| `info_resource_photos`         | Fotos de referencia                               | Sí, de recursos publicados   |
+| `staff_members`                | Pertenencia al rol Moderador                      | No                           |
+| `moderation_log`               | Auditoría                                         | No                           |
 
-| Columna | Naturaleza | Para qué |
-| --- | --- | --- |
-| `reference_code` | `text`, 8 caracteres, base32 de Crockford sin I, L, O ni U | Legible y dictable por teléfono. Se le entrega al ciudadano y es el identificador de la URL pública. |
-| `manage_token` | `uuid` versión 4 | Inadivinable. Autoriza la gestión de la propia publicación sin cuenta. Nunca aparece en ninguna vista pública. |
 
-Las claves primarias no se exponen nunca, así que una clave secuencial no filtra nada y da mejor localidad de índice que un UUID aleatorio.
+`help_offers` **queda sin uso en el MVP.** «Quiero ayudar» filtra y no registra a nadie (RF-3.11). La tabla permanece en el esquema porque ya está migrada y eliminarla no aporta nada; ninguna ruta escribe en ella. Si más adelante se decide registrar aportantes, está disponible.
 
-El alfabeto del código excluye I, L y O por ambigüedad visual al dictarlas, y U para evitar que el generador produzca palabras ofensivas por accidente. La unicidad la garantiza la restricción `UNIQUE`, que es lo que hace correcto el reintento por conflicto en la aplicación.
+### 12.2 Claves
 
-### 9.3 Vocabularios controlados y estados
+Clave primaria `BIGINT GENERATED ALWAYS AS IDENTITY`, salvo `staff_members`, cuyo `uuid` viene de `auth.users`.
+
+La opacidad que el sistema necesita está en dos columnas propias:
+
+
+| Columna          | Naturaleza                                                 | Para qué                                                                     |
+| ---------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `reference_code` | `text`, 8 caracteres, base32 de Crockford sin I, L, O ni U | Legible y dictable por teléfono. Identificador de la URL pública             |
+| `manage_token`   | `uuid` v4                                                  | Inadivinable. Autoriza la gestión sin cuenta. Nunca aparece en vista pública |
+
+
+Las claves primarias no se exponen, así que una clave secuencial no filtra nada y da mejor localidad de índice que un UUID aleatorio. El alfabeto excluye I, L y O por ambigüedad al dictarlas, y U para evitar palabras ofensivas accidentales.
+
+### 12.3 Estados
 
 `help_requests` tiene dos columnas de estado, no una:
 
-| Columna | Valores | Quién la cambia |
-| --- | --- | --- |
-| `moderation_status` | `sin_verificar` · `verificado` · `duplicado` · `oculta` · `retirada` | Moderador, o la propia persona al retirar |
-| `fulfillment_status` | `abierta` · `atendida` | La propia persona o el Moderador |
 
-Colapsarlas en un solo enumerado produce estados imposibles de representar: una necesidad puede estar verificada y atendida al mismo tiempo, y con un único campo habría que elegir cuál de los dos hechos se pierde.
+| Columna              | Valores                                                              |
+| -------------------- | -------------------------------------------------------------------- |
+| `moderation_status`  | `sin_verificar` · `verificado` · `duplicado` · `oculta` · `retirada` |
+| `fulfillment_status` | `abierta` · `atendida`                                               |
 
-Todos los conjuntos de valores se modelan como `text` con `CHECK`, no como tipo `ENUM` nativo. Las categorías de una emergencia son de negocio y cambiarán entre eventos: un `CHECK` se reemplaza en una migración, mientras que de un `ENUM` nunca se puede eliminar un valor.
 
-**La geografía es la excepción: son tablas de catálogo con clave foránea, no `CHECK`.** La interfaz alimenta su autocompletado directamente desde `neighborhoods`, y un Moderador tiene que poder añadir un barrio que no estaba registrado sin necesidad de una migración.
+Colapsarlas produce estados imposibles de representar: una publicación puede estar verificada y atendida a la vez.
 
-Que la zona no sea texto libre no es una preferencia de estilo. Es la clave con la que se empareja un aporte con una necesidad y con la que se filtran el tablero y el directorio. Con texto libre, «La Enea», «la enea» y «Enea» serían tres grupos distintos y el emparejamiento devolvería cero coincidencias sin ningún error que lo explicara. La clave foránea convierte ese fallo silencioso en un rechazo inmediato.
+Los conjuntos se modelan como `text` con `CHECK`, no como `ENUM`. Las categorías de una emergencia cambian entre eventos: un `CHECK` se reemplaza en una migración, mientras que de un `ENUM` nunca se puede eliminar un valor.
 
-### 9.3b Tres columnas para la geografía, y por qué
+**La geografía es la excepción:** son tablas de catálogo con clave foránea. La interfaz alimenta su autocompletado desde `neighborhoods` y un Moderador debe poder añadir un barrio sin una migración.
 
-Cada necesidad localizada lleva tres columnas, y la división existe para resolver una tensión concreta: **el filtro fiable y el registro honesto de lo que la persona dijo no son lo mismo.**
+Con texto libre, «La Enea», «la enea» y «Enea» serían tres grupos distintos y el filtro devolvería cero coincidencias sin ningún error que lo explicara. La clave foránea convierte ese fallo silencioso en un rechazo inmediato.
 
-| Columna | Contenido | Obligatoria |
-| --- | --- | --- |
-| `sector` | El barrio tal como lo escribió la persona, literal | Sí |
-| `neighborhood_code` | Se llena solo si ese texto coincidió con el catálogo | No |
-| `comuna_code` | Se deriva de la coincidencia, o la asigna un Moderador | No |
+### 12.4 Tres columnas para la geografía
 
-Alguien en un asentamiento informal, en una vereda o en una urbanización recién construida escribirá un nombre que no está en ningún catálogo. Rechazarlo no es una opción, así que **el texto se conserva y la zona queda sin asignar hasta que un humano la resuelva**.
 
-De ahí se deriva una decisión que parece un detalle y no lo es: la vista pública une la geografía con `LEFT JOIN` y no con un `JOIN` interno. Con un `JOIN` interno, toda necesidad sin zona resuelta desaparecería del tablero, y eso ocultaría precisamente a las personas cuyo barrio no figura en ningún mapa. Sería un fallo de equidad, no de rendimiento.
+| Columna             | Contenido                                                | Obligatoria |
+| ------------------- | -------------------------------------------------------- | ----------- |
+| `sector`            | El barrio tal como lo escribió la persona                | Sí          |
+| `neighborhood_code` | Solo si el texto coincidió con el catálogo               | No          |
+| `comuna_code`       | Derivada de la coincidencia, o asignada por un Moderador | No          |
 
-La coherencia entre barrio y comuna se garantiza con una **clave foránea compuesta**, sin ningún disparador. Una clave compuesta usa `MATCH SIMPLE` por defecto, que no se comprueba cuando alguna de sus columnas es nula, y eso da exactamente el comportamiento que se busca:
 
-| Par | Significado | Resultado |
-| --- | --- | --- |
-| `('la-enea', 'tesorito')` | Par válido del catálogo | Aceptado |
-| `('la-enea', 'san-jose')` | Barrio atribuido a otra comuna | Rechazado |
-| `(NULL, 'tesorito')` | Zona asignada por un Moderador, sin barrio | Aceptado |
-| `(NULL, NULL)` | Sin resolver, pendiente de moderación | Aceptado |
-| `('la-enea', NULL)` | Barrio sin su comuna | Rechazado por un `CHECK` |
+Quien vive en un asentamiento informal, una vereda o una urbanización nueva escribirá un nombre que no está en ningún catálogo. Rechazarlo no es opción: **el texto se conserva y la zona queda sin asignar hasta que un humano la resuelva**.
 
-La clave primaria de ambos catálogos es un identificador legible en minúsculas: es estable, sirve en una URL y no depende de una fuente externa para ser correcto.
+De ahí una decisión que parece un detalle y no lo es: la vista pública une la geografía con `LEFT JOIN`. Con un `JOIN` interno, toda publicación sin zona resuelta desaparecería del tablero, ocultando precisamente a quien no figura en ningún mapa. Sería un fallo de equidad.
 
-### 9.4 Restricciones de coherencia
+La coherencia se garantiza con una clave foránea compuesta, sin disparadores. `MATCH SIMPLE` no se comprueba cuando alguna columna es nula, que es exactamente el comportamiento buscado:
 
-El esquema impide estados incoherentes que la interfaz podría producir por error:
 
-| Restricción | Impide |
-| --- | --- |
-| `help_requests_verified_complete` | Marcar verificado sin fuente ni fecha. El distintivo público muestra la fuente: procedencia a medias es peor que ninguna. |
-| `help_requests_resolved_has_timestamp` | Marcar atendida sin fecha de resolución, que es lo que mide la ventana de 48 horas. |
-| `help_requests_withdrawn_consistent` | Que el estado retirada y su marca de tiempo se contradigan. |
-| `help_requests_duplicate_not_self` | Que una necesidad sea duplicada de sí misma. |
-| `info_resources_verified_has_timestamp` | Un recurso verificado sin fecha de verificación, que es justo el dato que el listado hace visible. |
+| Par                       | Resultado                                |
+| ------------------------- | ---------------------------------------- |
+| `('la-enea', 'tesorito')` | Aceptado                                 |
+| `('la-enea', 'san-jose')` | Rechazado: barrio de otra comuna         |
+| `(NULL, 'tesorito')`      | Aceptado: zona asignada por un Moderador |
+| `(NULL, NULL)`            | Aceptado: pendiente de moderación        |
+| `('la-enea', NULL)`       | Rechazado por un `CHECK`                 |
 
-Los campos de texto libre llevan tope de longitud mediante `CHECK (length(col) <= n)` en lugar de `varchar(n)`. En un formulario público sin autenticación, ese tope es además una defensa barata contra cargas de varios megabytes.
 
-El teléfono se valida solo por longitud y clase de caracteres, a propósito. Un patrón estricto que rechace un número válido escrito por alguien en una emergencia hace más daño que almacenar uno malformado. Por la misma razón no se usa un tipo `DOMAIN`.
 
-### 9.5 Búsqueda de texto
 
-Columna generada `search_vector` de tipo `tsvector`, `STORED`, con índice GIN, en `help_requests` y en `info_resources`.
+### 12.5 Búsqueda
 
-Dos detalles son determinantes:
+Columna generada `search_vector` de tipo `tsvector`, `STORED`, con índice GIN.
 
-1. **Siempre se pasa el idioma:** `to_tsvector('spanish', …)`. La forma de un solo argumento es `STABLE`, no `IMMUTABLE`, y PostgreSQL la rechaza en una columna generada. La forma de dos argumentos es inmutable y por eso funciona.
-2. **`'spanish'`, no `'english'`.** La derivación de raíces y las palabras vacías tienen que corresponder al idioma en que la gente escribe. Con configuración inglesa, buscar «albergues» no encontraría «albergue».
+Dos detalles determinantes:
 
-En `info_resources` el vector está ponderado con `setweight`: una coincidencia en el nombre pesa más que una en la descripción, que es lo que espera quien escribe «hospital».
+1. **Siempre se pasa el idioma:** `to_tsvector('spanish', …)`. La forma de un argumento es `STABLE`, no `IMMUTABLE`, y PostgreSQL la rechaza en una columna generada.
+2. `'spanish'`**, no** `'english'`**.** Con configuración inglesa, buscar «albergues» no encontraría «albergue».
 
-Se añade un índice trigrama sobre el nombre del recurso. La búsqueda de texto completo indexa palabras enteras, así que «hospi» no encontraría nada; el trigrama hace que la escritura parcial funcione, lo cual importa en un teclado de celular.
+En `info_resources` el vector está ponderado: una coincidencia en el nombre pesa más que una en la descripción. Se añade un índice trigrama sobre el nombre, porque la búsqueda de texto completo indexa palabras enteras y «hospi» no encontraría nada.
 
-### 9.6 Índices
+### 12.6 La vista pública
 
-El criterio es indexar los caminos de acceso que realmente se consultan, y ninguno más. Cada índice extra encarece una inserción en un formulario público.
+`public_help_requests` se declara con `security_invoker = false` y `security_barrier = true`, y ambas son explícitas.
 
-- **PostgreSQL no indexa las claves foráneas automáticamente.** Hay que declararlas a mano: `duplicate_of`, `verified_by`, `updated_by`, `resource_id` y el par polimórfico `(entity_type, entity_id)` del registro de auditoría.
-- **El índice del tablero es parcial**, restringido a las filas visibles. Su predicado usa solo expresiones inmutables: la comparación con `now()` queda deliberadamente fuera, porque `now()` no es inmutable y haría ilegal el índice. El filtro por caducidad lo aplica la vista, no el índice.
-- El `payload` del registro de auditoría es `jsonb` con `CHECK (jsonb_typeof(payload) = 'object')` y sin índice GIN: se escribe para auditar y se lee por entidad, nunca por su contenido.
-- Los teléfonos del directorio son `text[]` y no una tabla aparte, porque son valores con orden y nada se une por ellos. Tampoco llevan índice GIN: nunca se consulta por teléfono, solo se muestran.
+`security_invoker = false` hace que la vista se ejecute con los privilegios de su propietario. Por eso `anon` puede leer a través de ella sin tener privilegios sobre la tabla. Ese salto de RLS es el diseño buscado. Ponerlo en `true` rompería el tablero entero: es un detalle de una línea con capacidad de tumbar el módulo.
 
-### 9.7 La vista pública
+`security_barrier = true` impide que el planificador empuje una función del usuario por debajo del `WHERE` de la vista.
 
-`public_help_requests` se declara con `security_invoker = false` y `security_barrier = true`, y ambas cosas son explícitas.
+La vista no expone clave primaria, token de gestión, prioridad, coordenadas exactas, quién verificó, de qué es duplicado, fecha de caducidad ni marcas de consentimiento.
 
-**`security_invoker = false`** hace que la vista se ejecute con los privilegios de su propietario. Por eso el rol `anon` puede leer a través de ella aunque no tenga ningún privilegio sobre la tabla `help_requests`. Ese salto de RLS es el diseño buscado: es lo que permite exponer una proyección estrecha y filtrada mientras el token de gestión, la prioridad y las coordenadas exactas siguen siendo inalcanzables.
+### 12.7 Datos de origen
 
-Ponerlo en `true` haría que la vista evaluara RLS con los permisos de quien llama, y quien llama no tiene ninguno: el tablero dejaría de funcionar. Es un detalle de una línea con capacidad de romper el módulo entero, y por eso está fijado y documentado.
+`base_verificada_emergencia_sismo_manizales_2026-08-10.md` es la fuente de la semilla del centro de información:
 
-**`security_barrier = true`** impide que el planificador empuje una función suministrada por el usuario por debajo del `WHERE` de la vista, lo que podría filtrar filas que el filtro debía excluir.
 
-La vista expone las coordenadas redondeadas a tres decimales y no expone la clave primaria, el token de gestión, la prioridad, las coordenadas exactas, quién verificó, de qué es duplicado, la fecha de caducidad ni ninguna marca de consentimiento.
+| Sección                 | Alimenta                                    |
+| ----------------------- | ------------------------------------------- |
+| §1 Estado general       | Estado de la ciudad (RF-0.6)                |
+| §2 Alertas              | Alertas vigentes (RF-5.9)                   |
+| §3 Líneas de emergencia | Categoría `lineas_atencion`                 |
+| §4 Albergues            | Categoría `albergues`, respetando RI-1      |
+| §5 Donación de sangre   | Categoría `donacion_sangre`                 |
+| §6 Hospitales           | Categoría `hospitales`, respetando RI-2     |
+| §9 Vías                 | Categoría `cierres_viales`, respetando RI-4 |
+| §10 Servicios públicos  | Categoría `servicios_publicos`              |
+| §11 Apoyo psicosocial   | Categoría `lineas_atencion`                 |
+| §12 Guía ciudadana      | `/que-hacer` (RF-5.10)                      |
 
-### 9.8 Almacenamiento de archivos
 
-| Bucket | Acceso | Contenido |
-| --- | --- | --- |
-| Fotos de necesidades | Lectura pública, sin listado, rutas basadas en UUID | Una foto por necesidad, sin metadatos, comprimida |
-| Fotos del directorio | Lectura pública | Fotos de referencia de los recursos |
-
-La escritura en ambos ocurre solo desde el servidor. Ninguna carga va directa del navegador al almacenamiento: la limpieza de metadatos de RNF-5.7 exige que el archivo pase por el servidor.
+Cada fila sembrada conserva su fuente y su fecha de verificación. Ningún dato marcado como pendiente en §16 se siembra como confirmado.
 
 ---
 
-## 10. Decisiones de la organización
 
-Estas decisiones no son técnicas y no bloquean la implementación. Bloquean la publicación.
 
-| # | Decisión | Por qué importa |
-| --- | --- | --- |
-| D-1 | **Responsable del tratamiento de datos personales.** Qué entidad jurídica figura en el aviso de privacidad. | Con publicación abierta de teléfonos y fotos de personas vulnerables, alguien asume la responsabilidad legal de esa divulgación ante la Superintendencia de Industria y Comercio. |
-| D-2 | **Quién modera, con qué frecuencia y con qué compromiso de respuesta.** | La moderación es reactiva por diseño. Sin nadie revisando, un teléfono publicado por un tercero malintencionado permanece indefinidamente, y una foto inapropiada también. No es un rol opcional. |
-| D-3 | **Confirmación de la tabla de emparejamiento de la sección 6**, en particular que Sangre y Personas desaparecidas no participen en el emparejamiento. | Es la lógica que decide qué ve un aportante. Si está mal, el emparejamiento es inútil aunque funcione técnicamente. |
+## 13. Decisiones de la organización
+
+No bloquean implementar. Bloquean publicar.
+
+
+| #     | Decisión                                                                          | Por qué importa                                                                                                                 |
+| ----- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| D-1   | **Responsable del tratamiento de datos.** Qué entidad jurídica figura en el aviso | Con publicación abierta de teléfonos y fotos, alguien asume la responsabilidad ante la Superintendencia de Industria y Comercio |
+| D-2   | **Quién modera, con qué frecuencia y con qué compromiso**                         | La moderación es reactiva por diseño. Sin nadie revisando, un teléfono publicado por un tercero permanece indefinidamente       |
+| D-3   | **Confirmación de la tabla de la sección 9**                                      | Es la lógica que decide qué ve quien quiere ayudar                                                                              |
+| Datos | Comunas, corregimientos y catálogo de barrios de Manizales                        | No se pueden inventar                                                                                                           |
+
 
 ---
 
-## 11. Criterios de aceptación
 
-**Publicación y tablero**
 
-- [ ] Un ciudadano publica una necesidad desde un celular, sin cuenta, en menos de 90 segundos, y recibe código de radicado y enlace de gestión.
-- [ ] La necesidad aparece en el tablero público en menos de 60 segundos, con distintivo «Sin verificar».
-- [ ] El formulario advierte de forma destacada, antes del campo de teléfono, que el nombre, el teléfono y la foto serán públicos.
-- [ ] No se puede enviar sin marcar ambas casillas de consentimiento.
-- [ ] Cualquier persona, sin autenticarse, filtra el tablero por categoría y comuna y llama con un toque.
-- [ ] El barrio se escribe con autocompletado y, al coincidir, la comuna queda registrada sola.
-- [ ] Un barrio ausente del catálogo **no impide publicar**: se guarda el texto y la zona queda sin asignar.
-- [ ] Una necesidad con zona sin asignar aparece en el tablero. Verificado con prueba automatizada sobre la vista.
-- [ ] Un barrio atribuido a una comuna que no le corresponde se rechaza en la base de datos. Verificado con prueba automatizada.
-- [ ] El tablero ofrece el filtro «zona sin asignar».
-- [ ] Un Moderador asigna la comuna a una necesidad sin resolver y puede añadir ese barrio al catálogo.
-- [ ] El tablero responde `noindex` y `robots.txt` lo excluye. Verificado con prueba automatizada.
+## 14. Criterios de aceptación
 
-**Fotos**
+**Tablero**
 
-- [ ] Una foto con coordenadas GPS en su EXIF se almacena sin ningún metadato. Verificado con prueba automatizada que inspecciona el archivo almacenado.
-- [ ] La foto es visible en el detalle público de la necesidad.
-- [ ] Un Moderador retira una foto y la necesidad sigue publicada.
-- [ ] Las rutas del bucket no son enumerables y el listado está deshabilitado.
+- [ ] Una persona publica desde un celular, sin cuenta, en menos de 90 segundos, y recibe código y enlace de gestión
+- [ ] Aparece en el tablero en menos de 60 segundos con estado «Sin verificar»
+- [ ] El formulario advierte de forma destacada, antes del teléfono, que los datos serán públicos
+- [ ] No se envía sin marcar ambas casillas
+- [ ] Cualquiera filtra por categoría y comuna y llama con un toque
+- [ ] Un barrio ausente del catálogo no impide publicar; la zona queda sin asignar y la publicación aparece igual
+- [ ] Un barrio atribuido a otra comuna se rechaza en la base de datos
+- [ ] El tablero responde `noindex` y `robots.txt` lo excluye
 
-**Emparejamiento**
+**Quiero ayudar**
 
-- [ ] Al seleccionar tipo de aporte y, opcionalmente, comuna, el contador y la lista de necesidades coincidentes se actualizan sin enviar el formulario.
-- [ ] Sin comuna seleccionada, el emparejamiento incluye las necesidades con zona sin asignar.
-- [ ] La correspondencia respeta la tabla de la sección 6. Verificado con una prueba unitaria por cada fila de la tabla.
-- [ ] Con JavaScript deshabilitado, el formulario se envía y la confirmación muestra las coincidencias.
-- [ ] Un aporte de tipo Dinero nunca solicita datos financieros, no muestra emparejamiento y redirige a entidades verificadas.
-- [ ] Sin coincidencias, se explica y se ofrece el tablero completo.
+- [ ] Al seleccionar tipo de aporte se muestran las publicaciones que corresponden, con su teléfono
+- [ ] Sin comuna seleccionada se incluyen las de zona sin asignar
+- [ ] La correspondencia respeta la tabla de la sección 9
+- [ ] **Funciona con JavaScript deshabilitado y los criterios viven en la URL**
+- [ ] Un aporte de tipo Dinero no solicita datos financieros y remite a entidades verificadas
+- [ ] Sin coincidencias se explica y se ofrece el tablero completo
+- [ ] **No se almacena ningún dato de quien ayuda**
 
 **Gestión y ciclo de vida**
 
-- [ ] Con su enlace de gestión y sin cuenta, una persona marca su necesidad como resuelta y la retira.
-- [ ] Una necesidad retirada desaparece de inmediato del tablero, del detalle y de la API de filtrado.
-- [ ] Una necesidad atendida se ve marcada 48 horas y luego se oculta.
-- [ ] Una necesidad sin actividad se oculta a los 14 días.
+- [ ] Con su enlace y sin cuenta, una persona cierra y retira su publicación
+- [ ] Una retirada desaparece de inmediato de toda vista pública
+- [ ] Una atendida se ve marcada 48 horas y luego se oculta
+- [ ] Una sin actividad se oculta a los 14 días
+
+**Centro de información**
+
+- [ ] Se consulta, filtra y busca, con fecha de verificación visible en cada tarjeta
+- [ ] «hospi» encuentra «Hospital»
+- [ ] Un recurso verificado hace más de 72 horas se marca como potencialmente desactualizado
+- [ ] Un recurso cerrado sigue visible y marcado
+- [ ] **Un número con menú marca el número base, nunca el número con el dígito de opción pegado**
+- [ ] Las alertas vigentes se muestran con fuente y vencimiento; una vencida deja de mostrarse
+- [ ] `/que-hacer` cubre los escenarios de RF-5.10 y cada uno termina en un número
+- [ ] Un dato no confirmado muestra el texto de RI-5
+- [ ] El centro de información es indexable y aparece en el sitemap
 
 **Seguridad**
 
-- [ ] Ninguna variable de entorno de Supabase se expone al navegador. Verificado inspeccionando el bundle de cliente en CI.
-- [ ] Un cliente anónimo no puede leer las tablas de necesidades ni de aportes, solo la vista pública. Verificado con prueba automatizada.
-- [ ] La vista pública no expone token de gestión, prioridad ni coordenadas exactas. Verificado con prueba automatizada.
-- [ ] El rol anónimo no puede suministrar prioridad ni estado de moderación al insertar. Verificado con prueba automatizada.
-- [ ] La API de filtrado nunca devuelve más de 20 filas, con cualquier combinación de parámetros.
-- [ ] El límite de tasa responde 429 en escrituras, filtrado y gestión de publicación.
-- [ ] Un usuario ajeno al equipo no accede a la ruta de moderación.
-- [ ] Toda acción de moderación queda registrada con autor y fecha, y el registro no admite modificación ni borrado.
-
-**Directorio**
-
-- [ ] El directorio se consulta, filtra y busca, con fecha de verificación visible en cada tarjeta.
-- [ ] La búsqueda parcial encuentra resultados: «hospi» encuentra «Hospital».
-- [ ] Un recurso muestra punto de encuentro y fotos de referencia con descripción.
-- [ ] Un Moderador crea y actualiza un recurso y su estado de verificación.
+- [ ] Ninguna variable de Supabase se expone al navegador
+- [ ] Un cliente anónimo no puede leer la tabla de publicaciones, solo la vista
+- [ ] La vista no expone token, prioridad ni coordenadas exactas
+- [ ] El rol anónimo no puede suministrar prioridad ni estado al insertar
+- [ ] Ninguna consulta pública devuelve más de 20 filas
+- [ ] Una foto con GPS en su EXIF se almacena sin ningún metadato
+- [ ] Un usuario ajeno al equipo no accede a moderación
+- [ ] Toda acción de moderación queda registrada y el registro no admite modificación
 
 **Transversales**
 
-- [ ] Se cumplen los presupuestos de peso de §7.2.
-- [ ] Auditoría de accesibilidad AA sin incidencias graves. Formularios operables con lector de pantalla. El contador en vivo se anuncia.
-- [ ] Las líneas de emergencia oficiales son accesibles desde la pantalla principal en un toque.
-- [ ] Aviso de privacidad publicado, con el responsable de D-1 identificado y el carácter público de los datos declarado de forma expresa.
+- [ ] Auditoría de accesibilidad AA sin incidencias graves
+- [ ] Las líneas de emergencia son accesibles desde la pantalla principal en un toque
+- [ ] Con zoom al 200 % no hay desplazamiento horizontal
+- [ ] Aviso de privacidad publicado con el responsable de D-1 identificado
 
 ---
 
-## 12. Plan de implementación
-
-Cada fase es desplegable. Ninguna deja la aplicación en estado intermedio.
-
-| Fase | Contenido | Depende de |
-| --- | --- | --- |
-| 0 | Andamiaje: Next.js, TypeScript, Tailwind, clientes de Supabase solo de servidor, variables de entorno, presupuesto de peso y verificación del bundle en CI | — |
-| 1 | Migraciones SQL, vista pública, RLS y políticas, privilegios por columna, buckets, semilla del directorio | Fase 0 |
-| 2 | Pantalla principal, incluidas las líneas de emergencia | Fase 0 |
-| 3 | Busco Información | Fases 1 y 2 |
-| 4 | Necesito Ayuda, Tablero público y Gestión de la propia publicación, con limpieza de metadatos de imagen | Fases 1 y 2 |
-| 5 | Motor de emparejamiento con pruebas unitarias | Fase 4, D-3 |
-| 6 | Quiero Ayudar con emparejamiento en vivo y su degradación sin JavaScript | Fase 5 |
-| 7 | Moderación, incluida la gestión del directorio, y aviso de privacidad | Fases 4 y 6, D-1 |
-| 8 | PWA, service worker, caducidades automáticas, auditorías de rendimiento y accesibilidad | Todas |
-
-La fase 4 es indivisible por seguridad, no por comodidad: desplegar la publicación de teléfonos y fotos sin el mecanismo de retiro dejaría a las personas sin forma de revertir su exposición, y sin la limpieza de metadatos publicaría la ubicación exacta de sus viviendas.
-
-El directorio va antes del tablero deliberadamente: es el único módulo que entrega valor sin requerir masa crítica de usuarios ni un operador humano.
-
----
-
-## 13. Trazabilidad con el documento fuente
-
-| Documento fuente | Estado |
-| --- | --- |
-| §2.A Necesito ayuda | Implementado y ampliado a publicación pública — RF-1, RF-2, RF-4 |
-| §2.B Quiero ayudar | Implementado y ampliado con emparejamiento — RF-3, §6 |
-| §2.C Manos Amigas | Fuera del alcance. RF-3.10 solo registra el interés. |
-| §2.D Centro de información | Implementado y ampliado con punto de encuentro y fotos de referencia — RF-5 |
-| §2.E Asistente IA | Fuera del alcance |
-| §2.F Centro de comando | Fuera del alcance. RF-6 cubre moderación, no coordinación. |
-| §3 Pantalla principal | Implementado con tres accesos en vez de cuatro, más líneas de emergencia y accesos secundarios |
-| §4 Campos de la necesidad | Implementado — RF-1.2, RF-1.3 |
-| §4 Generación automática por IA al guardar | Fuera del alcance |
-| §5 Prioridad | Estructura conservada, cálculo automático eliminado — RF-1.12 |
-| §6 Tipos de aporte | Implementado — RF-3.2 |
-| §6 No custodiar dinero | Implementado — RF-3.9 |
-| §7 Voluntariado | Fuera del alcance |
-| §8 Recursos del directorio | Implementado y ampliado — RF-5.3, RF-5.7 |
-| No previsto en el documento fuente | Tablero de necesidades (RF-2), gestión de la propia publicación (RF-4), tabla de emparejamiento (§6), líneas de emergencia en portada (RF-0.4), limpieza de metadatos de imagen (RNF-5.7) |

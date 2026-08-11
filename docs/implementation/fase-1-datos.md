@@ -25,11 +25,11 @@ Traslada [`docs/data-model.sql`](../data-model.sql) a migraciones versionadas si
 | 1.2 | `help_requests` y sus restricciones | PostgreSQL rechaza estados incoherentes, códigos inválidos y relaciones duplicadas imposibles |
 | 1.3 | Vista `public_help_requests` | El catálogo confirma que no expone tokens, prioridad, coordenadas exactas ni consentimientos |
 | 1.4 | RLS y privilegios de `help_requests` | `anon` solo puede insertar columnas permitidas y leer la vista pública |
-| 1.5 | `help_offers` | `anon` puede insertar, pero no tiene una ruta de lectura |
+| 1.5 | `help_offers` | Se crea con el resto del esquema. **Ninguna ruta del MVP escribe en ella**: «Quiero ayudar» filtra y no registra (TRD RF-3.11) |
 | 1.6 | `info_resources` y fotos | La lectura pública se limita a recursos publicados y la búsqueda usa configuración en español |
 | 1.7 | Equipo y auditoría | Solo miembros del equipo acceden; la auditoría no permite modificación ni borrado |
 | 1.8 | Buckets y políticas | La escritura es de servidor y el listado del bucket está deshabilitado |
-| 1.9 | Semilla inicial | Dos aplicaciones consecutivas no duplican filas |
+| 1.9 | Semilla del documento verificado | Dos aplicaciones consecutivas no duplican filas. Cada fila conserva su fuente y su fecha de verificación |
 
 ### Seguridad que debe comprobarse
 
@@ -50,9 +50,29 @@ RLS sola no impide que `anon` mencione una columna sensible al insertar. El `WIT
 
 La vista pública se revisa por ausencia: una columna nueva en la tabla no puede llegar por accidente a internet. Las coordenadas deben salir redondeadas y las filas retiradas o caducadas no deben aparecer.
 
-### Datos que no se pueden inventar
+### 1.9 — La semilla ya existe y está verificada
 
-La semilla necesita comunas y corregimientos de Manizales, barrios con su comuna, líneas de emergencia y recursos iniciales con fuente y fecha. Se puede empezar con un conjunto mínimo confirmado por la organización, pero nunca con teléfonos o ubicaciones plausibles sin verificar.
+El contenido del centro de información **no hay que redactarlo**: está en [`base_verificada_emergencia_sismo_manizales_2026-08-10.md`](../../base_verificada_emergencia_sismo_manizales_2026-08-10.md), con fuentes del Servicio Geológico Colombiano y la Alcaldía de Manizales, y hora de corte declarada.
+
+| Sección del documento | Categoría sembrada |
+| --- | --- |
+| §3 Líneas de emergencia | `lineas_atencion` |
+| §4 Albergues | `albergues`, **solo el Coliseo Mayor** |
+| §5 Donación de sangre | `donacion_sangre` |
+| §6 Hospitales y red médica | `hospitales` |
+| §9 Vías y movilidad | `cierres_viales` |
+| §10 Servicios públicos | `servicios_publicos` |
+| §11 Apoyo psicosocial | `lineas_atencion` |
+
+Reglas de siembra, tomadas del propio documento. No son preferencias:
+
+- **Solo se siembra el Coliseo Mayor como albergue.** El balance oficial dice que hay tres habilitados, pero solo identifica uno por nombre. Sembrar los otros dos con una ubicación plausible sería inventar un refugio (RI-1).
+- **El Hospital Santa Sofía se siembra con afectaciones, nunca como cerrado.** «Presenta afectaciones» no es «cerrado» mientras una autoridad no lo confirme (RI-2).
+- **Solo el Cable Aéreo entra en cierres viales.** Es el único con comunicado oficial; no existe listado consolidado de vías urbanas cerradas (RI-4).
+- **Los dígitos de opción no van en el teléfono.** «123 opción 2» se siembra con teléfono `123` y la opción en la descripción. Concatenar produciría `1232`, un número inexistente.
+- Todo lo que la §16 del documento marca como pendiente **no se siembra como confirmado**.
+
+Lo que sigue sin poderse inventar son los catálogos: comunas, corregimientos y barrios de Manizales con su comuna. Esos los aporta la organización.
 
 ## Orden de migración
 
@@ -114,7 +134,10 @@ También se ejecutan manualmente los casos de permiso y denegación de la tabla 
 - [ ] La auditoría es de solo adición.
 - [ ] La búsqueda en español y la escritura parcial funcionan.
 - [ ] El bucket de fotos no permite listado público.
-- [ ] La semilla es idempotente y usa datos confirmados.
+- [ ] La semilla es idempotente y usa únicamente datos confirmados del documento verificado.
+- [ ] Cada recurso sembrado conserva su fuente y su fecha de verificación.
+- [ ] Solo se sembró un albergue, porque solo uno está identificado por nombre.
+- [ ] Ningún teléfono sembrado incluye el dígito de opción del menú.
 - [ ] Los índices de claves foráneas y de caminos de lectura existen.
 
 ## Frontera de reversión

@@ -1,4 +1,4 @@
-[← Fase 3](./fase-3-directorio.md) · [Índice](./README.md) · Siguiente: [Fase 5 — Emparejamiento](./fase-5-emparejamiento.md)
+[← Fase 3](./fase-3-centro-de-informacion.md) · [Índice](./README.md) · Siguiente: [Fase 5 — Quiero ayudar](./fase-5-quiero-ayudar.md)
 
 # Fase 4 — Publicación, tablero y gestión
 
@@ -156,4 +156,4 @@ Los tres PR se revierten juntos. Retirar solo 4-C dejaría teléfonos publicados
 
 ## Siguiente paso
 
-[Fase 5 — Emparejamiento](./fase-5-emparejamiento.md)
+[Fase 5 — Quiero ayudar](./fase-5-quiero-ayudar.md)

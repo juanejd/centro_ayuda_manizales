@@ -1,4 +1,4 @@
-[← Fase 1](./fase-1-datos.md) · [Índice](./README.md) · Siguiente: [Fase 3 — Directorio](./fase-3-directorio.md)
+[← Fase 1](./fase-1-datos.md) · [Índice](./README.md) · Siguiente: [Fase 3 — Centro de información](./fase-3-centro-de-informacion.md)
 
 # Fase 2 — Pantalla principal
 
@@ -68,4 +68,4 @@ Se revierte restaurando `src/app/page.tsx`. La fase no crea rutas de destino ni 
 
 ## Siguiente paso
 
-[Fase 3 — Directorio](./fase-3-directorio.md)
+[Fase 3 — Centro de información](./fase-3-centro-de-informacion.md)
