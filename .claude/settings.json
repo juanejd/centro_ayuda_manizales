@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "ui-design@claude-code-workflows": true,
+    "javascript-typescript@claude-code-workflows": true
+  }
+}
