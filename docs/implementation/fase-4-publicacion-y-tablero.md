@@ -10,7 +10,7 @@ La fase con más consecuencia del proyecto. A partir de aquí la plataforma publ
 | --- | --- |
 | **Entrega** | Formulario de publicación, tablero público, gestión de la propia publicación, caducidad automática |
 | **Depende de** | Fases 1 y 2 |
-| **Requisitos del TRD** | RF-1.1 a RF-1.14, RF-2.1 a RF-2.10, RF-4.1 a RF-4.7, §8.2 completa |
+| **Requisitos del TRD** | RF-1.1 a RF-1.15, RF-2.1 a RF-2.11, RF-4.1 a RF-4.7, RF-0.7, §11.2 completa |
 | **Tamaño estimado** | ~900 líneas · excede el presupuesto de 800 · **tres PR encadenados** |
 
 ## Cortes de PR
@@ -66,7 +66,7 @@ Superamos las 800 líneas, así que el corte se decide antes de escribir código
 
 ### 4.3 — La limpieza de metadatos es lo que hace legal a la fase
 
-Una foto tomada con un celular lleva las coordenadas GPS exactas en su EXIF. Publicarla sin limpiar **anula por completo** el redondeo de coordenadas de RNF-5.6 y expone la vivienda con precisión de metros, además del modelo del dispositivo y la fecha.
+Una foto tomada con un celular lleva las coordenadas GPS exactas en su EXIF. Publicarla sin limpiar **anula por completo** el redondeo de coordenadas de RNF-4.6 y expone la vivienda con precisión de metros, además del modelo del dispositivo y la fecha.
 
 La comprobación usa **un archivo real con GPS en su EXIF**. Un mock del limpiador no demuestra que la librería elimine los metadatos del archivo resultante.
 

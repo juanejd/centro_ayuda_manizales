@@ -8,7 +8,7 @@ Traslada [`docs/data-model.sql`](../data-model.sql) a migraciones versionadas si
 | --- | --- |
 | Entrega | Migraciones, vista pública, RLS, privilegios, buckets y semillas |
 | Depende de | Fase 0 |
-| Requisitos del TRD | §8.5, §9 completa, RNF-5.2, RNF-5.6, RNF-5.8, RNF-5.14, RNF-5.15 |
+| Requisitos del TRD | §11.5, §12 completa, §12.7, RNF-4.2, RNF-4.6, RNF-4.8, RNF-4.14, RNF-4.15 |
 
 ## Ruta rápida
 

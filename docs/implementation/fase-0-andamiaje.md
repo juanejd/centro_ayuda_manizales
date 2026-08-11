@@ -8,7 +8,7 @@ Crea una base mínima y reproducible para empezar el MVP. No anticipa dominios, 
 | --- | --- |
 | Entrega | Next.js con App Router, TypeScript estricto, Tailwind, shadcn y Supabase solo de servidor |
 | Depende de | — |
-| Requisitos del TRD | §4.1, §4.2, §4.3, RNF-5.1 |
+| Requisitos del TRD | §5.1, §5.2, §5.3, RNF-4.1 |
 
 ## Ruta rápida
 

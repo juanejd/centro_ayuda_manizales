@@ -2,10 +2,10 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 
-import { getSupabaseEnv } from "@/shared/supabase/env";
+import { getPublicSupabaseEnv } from "@/shared/supabase/env";
 
 export function createServerSupabaseClient() {
-  const environment = getSupabaseEnv();
+  const environment = getPublicSupabaseEnv();
 
   return createClient(
     environment.SUPABASE_URL,

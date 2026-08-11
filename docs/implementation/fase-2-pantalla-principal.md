@@ -8,7 +8,9 @@ Una pantalla de entrada simple para una persona con prisa, mala señal o un tel�
 | --- | --- |
 | Entrega | Tres acciones principales, líneas de emergencia, aviso y enlaces secundarios |
 | Depende de | Fase 0; la consulta de líneas usa el esquema de la fase 1 |
-| Requisitos del TRD | RF-0.1 a RF-0.7, RNF-1.1, RNF-1.4, RNF-4.1 a RNF-4.5, §7.2 |
+| Requisitos del TRD | RF-0.1 a RF-0.4, RF-0.8, RNF-1.1, RNF-3.1 a RNF-3.5, §7.3 |
+
+> **La pantalla principal se completa en dos fases más.** Las alertas vigentes (RF-0.5) y el estado de la ciudad (RF-0.6) llegan con la fase 3, porque su contenido vive en el centro de información. Las publicaciones recientes (RF-0.7) llegan con la fase 4, porque antes no hay tablero. Esta fase entrega el esqueleto navegable.
 
 ## Ruta rápida
 

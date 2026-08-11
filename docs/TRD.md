@@ -313,16 +313,16 @@ Ningún estado se comunica solo con color. La etiqueta siempre lleva texto.
 
 ### 7.3 Paleta
 
-Cada tono está hablado por algo. El rojo se reserva a marcar líneas de emergencia y no se usa en decoración.
+Cada tono está hablado por algo. El rojo marca la vía urgente y **nunca se usa como decoración**: si aparece en un borde o en un fondo por estética, deja de significar urgencia.
 
 
-| Rol     | Uso                                                          |
-| ------- | ------------------------------------------------------------ |
-| Navy    | Voz institucional, cabeceras, acción principal               |
-| Rojo    | Únicamente marcar una línea de emergencia                    |
-| Verde   | Información confirmada recientemente                         |
-| Ámbar   | Información que envejeció más allá de lo confiable           |
-| Pizarra | Recurso cerrado: presente, legible, claramente no disponible |
+| Rol     | Uso                                                                 |
+| ------- | ------------------------------------------------------------------- |
+| Navy    | Voz institucional, cabeceras, superficies de marca                  |
+| Rojo    | La vía urgente: líneas de emergencia y la acción **NECESITO AYUDA** |
+| Verde   | Información confirmada recientemente                                |
+| Ámbar   | Información que envejeció más allá de lo confiable                  |
+| Pizarra | Recurso cerrado: presente, legible, claramente no disponible        |
 
 
 ---
