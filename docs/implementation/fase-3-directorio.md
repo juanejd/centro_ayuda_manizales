@@ -13,7 +13,7 @@ El primer módulo que entrega valor completo al usuario. Es de solo lectura, no 
 
 ## Ruta rápida
 
-1. Dominio y consultas: categorías, filtros y búsqueda, probados sin interfaz.
+1. Dominio y consultas: categorías, filtros y búsqueda, comprobados directamente.
 2. Listado con distintivo de frescura visible en cada tarjeta.
 3. Detalle con punto de encuentro, galería y fecha de verificación.
 
@@ -21,20 +21,20 @@ El primer módulo que entrega valor completo al usuario. Es de solo lectura, no 
 
 ## Unidades de trabajo
 
-| ID | Commit | Entrega | Prueba primero |
+| ID | Commit | Entrega | Comprobación |
 | --- | --- | --- | --- |
-| 3.1 | `feat(directory): add resource domain and read queries` | Vocabulario de categorías, tipos, consultas de listado y detalle | Test de integración: el filtro por categoría y comuna devuelve solo lo esperado. La búsqueda encuentra por derivación de raíces y por escritura parcial. **Un recurso no publicado nunca aparece** |
-| 3.2 | `feat(directory): add the filterable resource list` | `app/informacion/page.tsx`, filtros en la URL, tarjetas | E2E: filtrar por categoría cambia el listado y **la URL**, de modo que se pueda compartir. Con JavaScript deshabilitado, los filtros siguen funcionando |
-| 3.3 | `feat(directory): show verification freshness on every card` | Distintivo de estado y antigüedad de la verificación | Test: un recurso verificado hace más de 72 horas se marca como potencialmente desactualizado. El estado se comunica con texto, no solo con color |
-| 3.4 | `feat(directory): add resource detail with meeting point and photos` | `app/informacion/[slug]/page.tsx`, galería diferida | E2E: se muestran punto de encuentro, teléfonos como `tel:`, dirección que abre el mapa. Cada foto tiene texto alternativo |
-| 3.5 | `feat(directory): add the consolidated emergency lines view` | Vista de líneas de atención accesible en un toque | E2E: se llega desde la pantalla principal con una sola interacción |
-| 3.6 | `feat(directory): make the directory indexable and cacheable` | `revalidate = 300`, revalidación bajo demanda, `sitemap.xml`, `robots.txt` | Test: el directorio responde **sin** `noindex`, a diferencia del tablero de la fase 4. El sitemap lista los recursos publicados |
+| 3.1 | `feat(directory): add resource domain and read queries` | Vocabulario de categorías, tipos, consultas de listado y detalle | Comprobar en base de datos: el filtro por categoría y comuna devuelve solo lo esperado. La búsqueda encuentra por derivación de raíces y por escritura parcial. **Un recurso no publicado nunca aparece** |
+| 3.2 | `feat(directory): add the filterable resource list` | `app/informacion/page.tsx`, filtros en la URL, tarjetas | Comprobar en el navegador: filtrar por categoría cambia el listado y **la URL**, de modo que se pueda compartir. Con JavaScript deshabilitado, los filtros siguen funcionando |
+| 3.3 | `feat(directory): show verification freshness on every card` | Distintivo de estado y antigüedad de la verificación | Comprobar: un recurso verificado hace más de 72 horas se marca como potencialmente desactualizado. El estado se comunica con texto, no solo con color |
+| 3.4 | `feat(directory): add resource detail with meeting point and photos` | `app/informacion/[slug]/page.tsx`, galería diferida | Comprobar en el navegador: se muestran punto de encuentro, teléfonos como `tel:`, dirección que abre el mapa. Cada foto tiene texto alternativo |
+| 3.5 | `feat(directory): add the consolidated emergency lines view` | Vista de líneas de atención accesible en un toque | Comprobar en el navegador: se llega desde la pantalla principal con una sola interacción |
+| 3.6 | `feat(directory): make the directory indexable and cacheable` | `revalidate = 300`, revalidación bajo demanda, `sitemap.xml`, `robots.txt` | Comprobar: el directorio responde **sin** `noindex`, a diferencia del tablero de la fase 4. El sitemap lista los recursos publicados |
 
 ### 3.1 — Los recursos cerrados se muestran, no se esconden
 
-RF-5.8 es contraintuitivo y hay que probarlo explícitamente: un albergue con estado `cerrado` **sigue apareciendo** en el listado, claramente marcado. Quien llega a un albergue cerrado necesita saber que cerró, no concluir que nunca existió y seguir buscando.
+RF-5.8 es contraintuitivo y hay que comprobarlo explícitamente: un albergue con estado `cerrado` **sigue apareciendo** en el listado, claramente marcado. Quien llega a un albergue cerrado necesita saber que cerró, no concluir que nunca existió y seguir buscando.
 
-La prueba que se olvida es la inversa: un recurso con `is_published = false` **nunca** aparece. Son dos conceptos distintos —cerrado es un hecho del mundo, no publicado es un estado editorial— y confundirlos en la consulta es fácil.
+La comprobación inversa también importa: un recurso con `is_published = false` **nunca** aparece. Son dos conceptos distintos —cerrado es un hecho del mundo, no publicado es un estado editorial— y confundirlos en la consulta es fácil.
 
 ### 3.3 — La frescura es el requisito, no un adorno
 
@@ -46,19 +46,26 @@ El umbral de 72 horas se calcula en el servidor. Calcularlo en el cliente introd
 
 Es la única superficie pública de la plataforma que **debe** aparecer en buscadores: es información institucional, no datos personales. Alguien que busca «albergue Manizales» en Google debe encontrarla.
 
-Esto lo pone en oposición directa al tablero de la fase 4, que lleva `noindex`. La prueba de 3.6 y la del tablero se leen juntas: una afirma presencia de indexación, la otra ausencia. Tenerlas explícitas evita que una configuración global futura las iguale por descuido.
+Esto lo pone en oposición directa al tablero de la fase 4, que lleva `noindex`. Las comprobaciones de 3.6 y del tablero se leen juntas: una afirma presencia de indexación, la otra ausencia. Tenerlas explícitas evita que una configuración global futura las iguale por descuido.
 
 ---
 
 ## Verificación
 
 ```bash
-pnpm test:db -- directory
-pnpm test:e2e -- directory
-pnpm exec playwright test directory --project=no-js
-pnpm build                          # ≤ 50 KB de JS, ≤ 200 KB total sin fotos
-curl -sI localhost:3000/informacion | grep -i x-robots-tag   # esperado: sin noindex
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm dev
 ```
+
+Comprobaciones manuales:
+
+- Filtrar por categoría y comuna actualiza la URL y funciona sin JavaScript.
+- Un recurso cerrado sigue visible; uno no publicado no aparece.
+- Los teléfonos abren el marcador y cada foto tiene texto alternativo.
+- `curl -sI localhost:3000/informacion` no devuelve `noindex`.
+- Con zoom al 200 %, el listado y el detalle no producen desplazamiento horizontal.
 
 ---
 

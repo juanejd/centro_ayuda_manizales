@@ -26,7 +26,7 @@ La fase cabe en un solo PR. Este corte se conserva porque separa dos entregas co
 
 ## Ruta rápida
 
-1. Autenticación y guarda de acceso, con la prueba de que un usuario ajeno al equipo no entra.
+1. Autenticación y guarda de acceso, confirmando que un usuario ajeno al equipo no entra.
 2. Bandeja de necesidades con sus acciones, cada una registrada en auditoría.
 3. Directorio editable y aviso de privacidad.
 
@@ -36,28 +36,28 @@ La fase cabe en un solo PR. Este corte se conserva porque separa dos entregas co
 
 ### PR 7-A — Acceso y moderación
 
-| ID | Commit | Entrega | Prueba primero |
+| ID | Commit | Entrega | Comprobación |
 | --- | --- | --- | --- |
-| 7.1 | `feat(moderation): add team authentication and route guard` | Inicio de sesión, guarda de ruta, comprobación de pertenencia | Test: un usuario **autenticado pero ausente de `staff_members`** recibe denegación. Test: un usuario anónimo es redirigido. Test: no existe ninguna ruta de registro público |
-| 7.2 | `feat(moderation): add the needs inbox with filters` | Listado con filtros por categoría, comuna, estado y prioridad | Test de integración: el listado muestra las coordenadas **exactas**, a diferencia de la vista pública. Test: incluye ocultas y retiradas, que el tablero no muestra |
-| 7.3 | `feat(moderation): add moderation actions with an audit trail` | Verificar con fuente, marcar duplicada, ocultar, retirar, asignar prioridad | Test: verificar **sin indicar fuente es rechazado por la restricción de coherencia**. Test: cada acción escribe una fila de auditoría con autor y fecha. Test: la auditoría **no admite modificación ni borrado** |
-| 7.4 | `feat(moderation): let a moderator retire a photo on its own` | Retiro de foto sin ocultar la necesidad | E2E: tras retirar la foto, la necesidad **sigue publicada** y el detalle ya no la muestra. Test: el archivo deja de ser accesible |
-| 7.5 | `feat(moderation): add the offers list for proactive contact` | Listado de aportes con sus datos de contacto | Test: el listado muestra teléfono y correo, que ninguna vista pública expone |
+| 7.1 | `feat(moderation): add team authentication and route guard` | Inicio de sesión, guarda de ruta, comprobación de pertenencia | Comprobar: un usuario **autenticado pero ausente de `staff_members`** recibe denegación. Comprobar: un usuario anónimo es redirigido. Comprobar: no existe ninguna ruta de registro público |
+| 7.2 | `feat(moderation): add the needs inbox with filters` | Listado con filtros por categoría, comuna, estado y prioridad | Comprobar en base de datos: el listado muestra las coordenadas **exactas**, a diferencia de la vista pública. Comprobar: incluye ocultas y retiradas, que el tablero no muestra |
+| 7.3 | `feat(moderation): add moderation actions with an audit trail` | Verificar con fuente, marcar duplicada, ocultar, retirar, asignar prioridad | Comprobar: verificar **sin indicar fuente es rechazado por la restricción de coherencia**. Comprobar: cada acción escribe una fila de auditoría con autor y fecha. Comprobar: la auditoría **no admite modificación ni borrado** |
+| 7.4 | `feat(moderation): let a moderator retire a photo on its own` | Retiro de foto sin ocultar la necesidad | Comprobar en el navegador: tras retirar la foto, la necesidad **sigue publicada** y el detalle ya no la muestra. Comprobar: el archivo deja de ser accesible |
+| 7.5 | `feat(moderation): add the offers list for proactive contact` | Listado de aportes con sus datos de contacto | Comprobar: el listado muestra teléfono y correo, que ninguna vista pública expone |
 
 ### PR 7-B — Contenido y requisito legal
 
-| ID | Commit | Entrega | Prueba primero |
+| ID | Commit | Entrega | Comprobación |
 | --- | --- | --- | --- |
-| 7.6 | `feat(moderation): add directory management` | Crear, editar, publicar y despublicar recursos; estado y fecha de verificación | Test: al marcar verificado **se exige la fecha**. E2E: despublicar retira el recurso del directorio público de inmediato |
-| 7.7 | `feat(moderation): add photo upload with mandatory captions` | Carga de fotos de referencia con descripción | E2E: **no se puede guardar una foto sin descripción**. Test: los metadatos se eliminan igual que en la fase 4 |
-| 7.8 | `feat(moderation): add CSV export of the filtered view` | Exportación | Test: el CSV respeta los filtros activos. Test: escapa comas, comillas y saltos de línea sin corromper columnas |
-| 7.9 | `docs(legal): publish the privacy notice` | Página de aviso de privacidad | E2E: enlazada desde ambos formularios y desde el pie. Test: contiene responsable, finalidad, **el carácter público de nombre, teléfono y foto**, conservación y canal de ejercicio de derechos |
+| 7.6 | `feat(moderation): add directory management` | Crear, editar, publicar y despublicar recursos; estado y fecha de verificación | Comprobar: al marcar verificado **se exige la fecha**. Comprobar en el navegador: despublicar retira el recurso del directorio público de inmediato |
+| 7.7 | `feat(moderation): add photo upload with mandatory captions` | Carga de fotos de referencia con descripción | Comprobar en el navegador: **no se puede guardar una foto sin descripción**. Comprobar: los metadatos se eliminan igual que en la fase 4 |
+| 7.8 | `feat(moderation): add CSV export of the filtered view` | Exportación | Comprobar: el CSV respeta los filtros activos. Comprobar: escapa comas, comillas y saltos de línea sin corromper columnas |
+| 7.9 | `docs(legal): publish the privacy notice` | Página de aviso de privacidad | Comprobar en el navegador: enlazada desde ambos formularios y desde el pie. Comprobar: contiene responsable, finalidad, **el carácter público de nombre, teléfono y foto**, conservación y canal de ejercicio de derechos |
 
 ### 7.3 — La auditoría es lo que hace defendible un tablero público
 
 Un tablero público donde alguien puede ocultar una necesidad sin dejar rastro es indefendible ante un reclamo: no habría forma de responder quién la ocultó ni por qué.
 
-Por eso `moderation_log` **no tiene política de `UPDATE` ni de `DELETE`** para ningún rol, y hay una prueba que lo confirma. Un registro de auditoría que se puede reescribir no es un registro de auditoría.
+Por eso `moderation_log` **no tiene política de `UPDATE` ni de `DELETE`** para ningún rol, y se comprueba directamente en sus políticas. Un registro de auditoría que se puede reescribir no es un registro de auditoría.
 
 El campo de autor distingue dos identidades: el identificador del usuario del equipo, o el literal que marca una acción hecha por el propio ciudadano con su token en la fase 4. Ambas rutas escriben en el mismo registro.
 
@@ -65,7 +65,7 @@ El campo de autor distingue dos identidades: el identificador del usuario del eq
 
 La guarda comprueba pertenencia a `staff_members`, no solo sesión válida. Supabase Auth permite registro con correo, así que si la comprobación fuera «tiene sesión», cualquiera que se registrara entraría a la bandeja con todos los datos de contacto de personas afectadas.
 
-La prueba que importa es la del medio: **usuario autenticado, con sesión perfectamente válida, ausente de `staff_members`.** No la del usuario anónimo, que es la fácil.
+El caso que importa es el del medio: **usuario autenticado, con sesión perfectamente válida, ausente de `staff_members`.** No la del usuario anónimo, que es la fácil.
 
 ### 7.4 — Una foto mala no debe costar una necesidad
 
@@ -82,22 +82,32 @@ La Ley 1581 exige autorización informada para una finalidad determinada. Las do
 ## Verificación
 
 ```bash
-pnpm test:db   -- moderation
-pnpm test:e2e  -- moderation
-pnpm exec playwright test moderation --grep "authenticated but not staff"
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm dev
 ```
 
+Comprobaciones manuales y de base de datos:
+
+- Una persona autenticada ausente de `staff_members` no entra a moderación.
+- Cada acción de moderación añade un registro con autor y fecha.
+- Retirar una foto no oculta la necesidad completa y el archivo deja de ser accesible.
+- El CSV respeta los filtros y escapa comas, comillas y saltos de línea.
+
 ```sql
--- Esperado: solo SELECT e INSERT. Ninguna política de UPDATE ni DELETE.
-select policyname, cmd from pg_policies
-where tablename = 'moderation_log' order by 1;
+-- Esperado: solo SELECT e INSERT; ninguna política de UPDATE ni DELETE.
+select policyname, cmd
+from pg_policies
+where tablename = 'moderation_log'
+order by 1;
 ```
 
 ---
 
 ## Definición de terminado
 
-- [ ] Un usuario autenticado ausente de `staff_members` no accede. Probado.
+- [ ] Un usuario autenticado ausente de `staff_members` no accede. Comprobado.
 - [ ] No existe ninguna ruta de registro público.
 - [ ] La bandeja filtra por categoría, comuna, estado de moderación y prioridad.
 - [ ] La bandeja muestra coordenadas exactas; la vista pública sigue mostrando las redondeadas.

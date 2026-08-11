@@ -21,14 +21,14 @@ Cierra el circuito. Es la única pantalla interactiva de la plataforma: mientras
 
 ## Unidades de trabajo
 
-| ID | Commit | Entrega | Prueba primero |
+| ID | Commit | Entrega | Comprobación |
 | --- | --- | --- | --- |
-| 6.1 | `feat(offers): add validation and the register server action` | Esquema Zod, Server Action, límite de tasa | Test: rechaza barrio atribuido a una comuna que no le corresponde, tipo de aporte inválido, envío sin consentimiento. Test de integración: registra y devuelve radicado. Test: el sexto envío en 10 minutos responde 429 |
-| 6.2 | `feat(offers): add the contribution form with matches on confirmation` | Formulario `<form>` nativo; la confirmación muestra las coincidencias | E2E **sin JavaScript**: se completa, se envía, y la confirmación lista las necesidades que encajan. Test: los datos del aportante **no aparecen en ninguna vista pública** |
-| 6.3 | `feat(offers): show matching needs live while the form is filled` | Isla de cliente, debounce de 300 ms, región `aria-live` | E2E: al elegir tipo de aporte y comuna, el contador cambia sin enviar el formulario. Test: el contador se anuncia en `aria-live="polite"`. Test: **si el endpoint falla, el formulario sigue siendo enviable** |
-| 6.4 | `feat(offers): route money contributions to verified organisations` | Rama de dinero | E2E: al elegir Dinero **no aparece ningún campo financiero**, no hay emparejamiento, y se redirige a las entidades verificadas del directorio |
-| 6.5 | `feat(offers): register volunteer interest without promising assignment` | Rama de voluntariado | E2E: se registra el contacto, se muestran las coincidencias, y el texto dice explícitamente que el módulo de voluntariado no está disponible |
-| 6.6 | `feat(offers): explain the empty state instead of showing nothing` | Estado sin coincidencias | E2E: sin coincidencias, se explica y se ofrece el tablero completo. Nunca una lista vacía sin texto |
+| 6.1 | `feat(offers): add validation and the register server action` | Esquema Zod, Server Action, límite de tasa | Comprobar: rechaza barrio atribuido a una comuna que no le corresponde, tipo de aporte inválido, envío sin consentimiento. Comprobar en base de datos: registra y devuelve radicado. Comprobar: el sexto envío en 10 minutos responde 429 |
+| 6.2 | `feat(offers): add the contribution form with matches on confirmation` | Formulario `<form>` nativo; la confirmación muestra las coincidencias | Comprobar en el navegador sin JavaScript: se completa, se envía, y la confirmación lista las necesidades que encajan. Comprobar: los datos del aportante **no aparecen en ninguna vista pública** |
+| 6.3 | `feat(offers): show matching needs live while the form is filled` | Isla de cliente, debounce de 300 ms, región `aria-live` | Comprobar en el navegador: al elegir tipo de aporte y comuna, el contador cambia sin enviar el formulario. Comprobar: el contador se anuncia en `aria-live="polite"`. Comprobar: **si el endpoint falla, el formulario sigue siendo enviable** |
+| 6.4 | `feat(offers): route money contributions to verified organisations` | Rama de dinero | Comprobar en el navegador: al elegir Dinero **no aparece ningún campo financiero**, no hay emparejamiento, y se redirige a las entidades verificadas del directorio |
+| 6.5 | `feat(offers): register volunteer interest without promising assignment` | Rama de voluntariado | Comprobar en el navegador: se registra el contacto, se muestran las coincidencias, y el texto dice explícitamente que el módulo de voluntariado no está disponible |
+| 6.6 | `feat(offers): explain the empty state instead of showing nothing` | Estado sin coincidencias | Comprobar en el navegador: sin coincidencias, se explica y se ofrece el tablero completo. Nunca una lista vacía sin texto |
 
 ### 6.2 antes de 6.3, y el orden importa
 
@@ -43,11 +43,11 @@ Presupuesto: 75 KB de JavaScript, 15 KB más que el resto de los formularios. Se
 Dos requisitos fáciles de olvidar:
 
 - **`aria-live="polite"`** en el contador. Un número que cambia en silencio es invisible para un lector de pantalla, y sin ese anuncio la función no existe para quien no ve la pantalla.
-- **RNF-3.2:** si el emparejamiento falla, el formulario sigue enviándose. Un fallo al mostrar coincidencias nunca puede bloquear el registro de un aporte. La prueba simula el endpoint caído y verifica que el envío llega.
+- **RNF-3.2:** si el emparejamiento falla, el formulario sigue enviándose. Un fallo al mostrar coincidencias nunca puede bloquear el registro de un aporte. La comprobación simula el endpoint no disponible y confirma que el envío llega.
 
 ### 6.4 — La rama de dinero no captura nada
 
-RF-3.9 es una prohibición, no una funcionalidad. La prueba se escribe en negativo: **con Dinero seleccionado, el formulario no contiene ningún campo financiero.** Se afirma la ausencia, porque lo que hay que evitar es que alguien añada «número de cuenta» pensando que ayuda.
+RF-3.9 es una prohibición, no una funcionalidad. La comprobación es negativa: **con Dinero seleccionado, el formulario no contiene ningún campo financiero.** Se afirma la ausencia, porque lo que hay que evitar es que alguien añada «número de cuenta» pensando que ayuda.
 
 ### 6.5 — No prometer lo que el sistema no hace
 
@@ -55,26 +55,26 @@ Registrar voluntarios y luego no llamarlos destruye la confianza más rápido qu
 
 ### 6.1 — La asimetría es deliberada
 
-Los datos del aportante **no se publican nunca**, a diferencia de los de quien pide ayuda. Quien pide ayuda autoriza expresamente la publicación con una casilla propia; quien la ofrece no. La prueba de 6.2 lo verifica consultando la vista pública y las respuestas de la API para confirmar que ningún dato del aportante aparece.
+Los datos del aportante **no se publican nunca**, a diferencia de los de quien pide ayuda. Quien pide ayuda autoriza expresamente la publicación con una casilla propia; quien la ofrece no. La comprobación de 6.2 lo confirma consultando la vista pública y las respuestas de la API para confirmar que ningún dato del aportante aparece.
 
 ---
 
 ## Verificación
 
 ```bash
-pnpm test:unit -- offers
-pnpm test:db   -- offers
-pnpm test:e2e  -- contribute
-pnpm exec playwright test contribute --project=no-js
-pnpm build                        # ≤ 75 KB de JS, ≤ 200 KB total
-pnpm exec playwright test contribute --grep "endpoint caído"
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm dev
 ```
 
-Comprobación de accesibilidad del contador en vivo, con lector de pantalla o con Axe:
+Comprobaciones manuales:
 
-```bash
-pnpm exec playwright test contribute --grep "aria-live"
-```
+- Completar y enviar el formulario con JavaScript deshabilitado.
+- Confirmar que la versión con JavaScript actualiza el contador y anuncia el cambio con lector de pantalla.
+- Simular el endpoint de coincidencias no disponible y confirmar que el envío sigue funcionando.
+- Elegir Dinero y confirmar que no aparece ningún campo financiero.
+- Revisar en la vista y la API públicas que no aparezcan datos del aportante.
 
 ---
 
@@ -86,7 +86,7 @@ pnpm exec playwright test contribute --grep "aria-live"
 - [ ] Con JavaScript, el contador y la lista se actualizan al elegir tipo de aporte y comuna, sin enviar.
 - [ ] El debounce es de 300 ms.
 - [ ] El contador se anuncia en una región `aria-live="polite"`.
-- [ ] Si el endpoint de emparejamiento falla, el formulario sigue siendo enviable. Probado con el endpoint caído.
+- [ ] Si el endpoint de emparejamiento falla, el formulario sigue siendo enviable. Comprobado con el endpoint no disponible.
 - [ ] Sin coincidencias, se explica y se ofrece el tablero completo.
 - [ ] Con Dinero: ningún campo financiero, ningún emparejamiento, redirección a entidades verificadas.
 - [ ] Con Tiempo como voluntario: se registra el contacto, se muestran coincidencias y se dice que el módulo no está disponible.
