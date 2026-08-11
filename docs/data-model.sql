@@ -12,7 +12,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;    -- partial-word search on directory n
 
 
 -- =============================================================================
--- 1. Shared helpers
+-- 1. Shared helpers and reference data
 -- =============================================================================
 
 -- updated_at is a lie unless something maintains it. A trigger is the only way
@@ -26,6 +26,68 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+
+-- =============================================================================
+-- 1b. Reference data
+-- =============================================================================
+
+-- Geography for a single-municipality MVP: Manizales.
+--
+-- Three columns work together on every located row, and the split exists to
+-- solve one problem: the reliable filter and the honest record of what the
+-- person actually said are not the same thing.
+--
+--   sector            what the person typed, verbatim. ALWAYS present.
+--   neighborhood_code set only when that text matched the catalogue.
+--   comuna_code       set on match, or assigned later by a moderator.
+--
+-- Someone in an informal settlement, a vereda or a brand-new development will
+-- type a name that is in no catalogue. Rejecting them is not an option, so the
+-- text is kept and the zone stays NULL until a human resolves it. That is why
+-- comuna_code is NULLABLE and why the public view LEFT JOINs it: an inner join
+-- would silently hide exactly the people least likely to be on a map.
+--
+-- Free text alone would reintroduce a silent bug one level down: "La Enea",
+-- "la enea" and "Enea" would be three different filter buckets and matching
+-- would return nothing with no error. The catalogue is what prevents that.
+
+CREATE TABLE comunas (
+  comuna_code           TEXT        PRIMARY KEY
+                                    CHECK (comuna_code ~ '^[a-z0-9]+(-[a-z0-9]+)*$'
+                                           AND length(comuna_code) <= 60),
+  name                  TEXT        NOT NULL CHECK (length(name) BETWEEN 2 AND 120),
+  -- Manizales has urban comunas and rural corregimientos. Both are valid zones
+  -- and the distinction matters for logistics: reaching a corregimiento is a
+  -- different journey from crossing a comuna.
+  kind                  TEXT        NOT NULL CHECK (kind IN ('urbana', 'rural')),
+  is_active             BOOLEAN     NOT NULL DEFAULT true,
+  sort_order            INTEGER     NOT NULL DEFAULT 0
+);
+
+CREATE INDEX comunas_active_idx ON comunas (sort_order, name) WHERE is_active;
+
+CREATE TABLE neighborhoods (
+  neighborhood_code     TEXT        PRIMARY KEY
+                                    CHECK (neighborhood_code ~ '^[a-z0-9]+(-[a-z0-9]+)*$'
+                                           AND length(neighborhood_code) <= 80),
+  name                  TEXT        NOT NULL CHECK (length(name) BETWEEN 2 AND 120),
+  comuna_code           TEXT        NOT NULL REFERENCES comunas(comuna_code),
+  is_active             BOOLEAN     NOT NULL DEFAULT true,
+
+  -- Redundant on its own, but it is what lets a located row carry a composite
+  -- foreign key and stay consistent without a trigger. See the tables below.
+  UNIQUE (neighborhood_code, comuna_code)
+);
+
+-- FK index: not automatic.
+CREATE INDEX neighborhoods_comuna_idx ON neighborhoods (comuna_code);
+
+-- Autocomplete. Full-text search stems whole words, so "La Ene" would match
+-- nothing; a trigram index makes prefix and substring typing work, which is the
+-- entire point of the field.
+CREATE INDEX neighborhoods_name_trgm_idx
+  ON neighborhoods USING GIN (name gin_trgm_ops);
 
 
 -- =============================================================================
@@ -68,8 +130,11 @@ CREATE TABLE help_requests (
   -- Length caps via CHECK, not VARCHAR(n). They double as a cheap
   -- denial-of-service guard on an unauthenticated write path.
   description           TEXT        NOT NULL CHECK (length(description) BETWEEN 10 AND 2000),
-  municipality          TEXT        NOT NULL CHECK (length(municipality) <= 120),
-  sector                TEXT        CHECK (length(sector) <= 160),
+
+  -- Geography. What the person typed is mandatory; the resolved zone is not.
+  sector                TEXT        NOT NULL CHECK (length(sector) BETWEEN 2 AND 160),
+  neighborhood_code     TEXT,
+  comuna_code           TEXT        REFERENCES comunas(comuna_code),
   address               TEXT        CHECK (length(address) <= 240),
 
   -- NUMERIC, not DOUBLE PRECISION: RNF-5.6 requires publishing round(coord, 3),
@@ -77,8 +142,8 @@ CREATE TABLE help_requests (
   -- — round(double precision) takes no scale — so DOUBLE would force a cast
   -- inside the security-critical view. NUMERIC(9,6) also stores the value
   -- exactly, which keeps the rounding boundary stable.
-  -- PostGIS is not warranted: this system filters by municipality text, never by
-  -- radius or distance.
+  -- PostGIS is not warranted: this system filters by comuna, never by radius or
+  -- distance.
   latitude              NUMERIC(9,6) CHECK (latitude  BETWEEN  -90 AND  90),
   longitude             NUMERIC(9,6) CHECK (longitude BETWEEN -180 AND 180),
 
@@ -139,6 +204,19 @@ CREATE TABLE help_requests (
                           to_tsvector('spanish', coalesce(description, ''))
                         ) STORED,
 
+  -- Geography consistency without a trigger. A composite foreign key uses MATCH
+  -- SIMPLE by default, so it is NOT checked when any of its columns is NULL:
+  --   ('la-enea', 'tesorito')  valid pair              -> accepted
+  --   ('la-enea', 'san-jose')  barrio in another comuna -> rejected
+  --   (NULL,      'tesorito')  zone assigned by a moderator, no barrio -> accepted
+  --   (NULL,      NULL)        unresolved, pending moderation          -> accepted
+  -- The CHECK closes the only remaining nonsense: a barrio without its comuna.
+  FOREIGN KEY (neighborhood_code, comuna_code)
+    REFERENCES neighborhoods (neighborhood_code, comuna_code),
+  CONSTRAINT help_requests_geo_consistent CHECK (
+    neighborhood_code IS NULL OR comuna_code IS NOT NULL
+  ),
+
   -- A request cannot be its own duplicate.
   CONSTRAINT help_requests_duplicate_not_self CHECK (duplicate_of IS DISTINCT FROM request_id),
 
@@ -176,7 +254,7 @@ CREATE INDEX help_requests_created_at_idx
 -- deliberately stays OUT of it, since now() is not immutable and would make
 -- the index illegal.
 CREATE INDEX help_requests_board_idx
-  ON help_requests (municipality, category, created_at DESC)
+  ON help_requests (comuna_code, category, created_at DESC)
   WHERE withdrawn_at IS NULL
     AND moderation_status NOT IN ('oculta', 'retirada');
 
@@ -187,6 +265,12 @@ CREATE INDEX help_requests_search_idx
 -- FK indexes. PostgreSQL does NOT create these automatically.
 CREATE INDEX help_requests_duplicate_of_idx ON help_requests (duplicate_of);
 CREATE INDEX help_requests_verified_by_idx  ON help_requests (verified_by);
+
+-- Separate plain indexes for the geography FKs. The board index above cannot
+-- serve them: a partial index is invisible to a referential integrity check,
+-- which must be able to find ANY referencing row, including the hidden ones.
+CREATE INDEX help_requests_comuna_idx       ON help_requests (comuna_code);
+CREATE INDEX help_requests_neighborhood_idx ON help_requests (neighborhood_code, comuna_code);
 
 -- RF-6.2 moderation list: pending items first.
 CREATE INDEX help_requests_moderation_idx
@@ -219,31 +303,37 @@ CREATE INDEX help_requests_expires_at_idx
 CREATE VIEW public_help_requests
 WITH (security_invoker = false, security_barrier = true) AS
 SELECT
-  reference_code,
-  created_at,
-  category,
-  description,
-  municipality,
-  sector,
-  address,
-  affected_people,
-  contact_name,                          -- public by product decision
-  contact_phone,                         -- public by product decision
-  photo_path,                            -- public; metadata stripped on upload
-  moderation_status,
-  fulfillment_status,
-  verified_source,
-  verified_at,
-  resolved_at,
+  r.reference_code,
+  r.created_at,
+  r.category,
+  r.description,
+  r.sector,
+  n.name  AS neighborhood,
+  c.name  AS comuna,
+  r.comuna_code,
+  r.address,
+  r.affected_people,
+  r.contact_name,                        -- public by product decision
+  r.contact_phone,                       -- public by product decision
+  r.photo_path,                          -- public; metadata stripped on upload
+  r.moderation_status,
+  r.fulfillment_status,
+  r.verified_source,
+  r.verified_at,
+  r.resolved_at,
   -- RNF-5.6: ~110 m. Enough to reach the block, not enough to pin a dwelling.
-  round(latitude,  3) AS latitude_approx,
-  round(longitude, 3) AS longitude_approx
-FROM help_requests
-WHERE withdrawn_at IS NULL
-  AND moderation_status IN ('sin_verificar', 'verificado', 'duplicado')
-  AND expires_at > now()
+  round(r.latitude,  3) AS latitude_approx,
+  round(r.longitude, 3) AS longitude_approx
+FROM help_requests r
+-- LEFT, not INNER. An unresolved zone must not remove the row from the board:
+-- that would hide precisely the people whose neighbourhood is on no map.
+LEFT JOIN neighborhoods n ON n.neighborhood_code = r.neighborhood_code
+LEFT JOIN comunas       c ON c.comuna_code       = r.comuna_code
+WHERE r.withdrawn_at IS NULL
+  AND r.moderation_status IN ('sin_verificar', 'verificado', 'duplicado')
+  AND r.expires_at > now()
   -- RF-2.6: fulfilled requests stay visible for 48 h, then drop off.
-  AND (fulfillment_status = 'abierta' OR resolved_at > now() - INTERVAL '48 hours');
+  AND (r.fulfillment_status = 'abierta' OR r.resolved_at > now() - INTERVAL '48 hours');
 
 -- Never expose request_id, manage_token, priority, exact coordinates,
 -- verified_by, duplicate_of, expires_at, or either consent timestamp.
@@ -279,8 +369,9 @@ CREATE TABLE help_offers (
   -- quantity plus unit into a 90-second form produces abandonment or fiction.
   capacity              TEXT        CHECK (length(capacity) <= 240),
 
-  municipality          TEXT        NOT NULL CHECK (length(municipality) <= 120),
   sector                TEXT        CHECK (length(sector) <= 160),
+  neighborhood_code     TEXT,
+  comuna_code           TEXT        REFERENCES comunas(comuna_code),
   latitude              NUMERIC(9,6) CHECK (latitude  BETWEEN  -90 AND  90),
   longitude             NUMERIC(9,6) CHECK (longitude BETWEEN -180 AND 180),
   availability          TEXT        CHECK (length(availability) <= 240),
@@ -294,7 +385,20 @@ CREATE TABLE help_offers (
   consent_accepted_at   TIMESTAMPTZ NOT NULL,
 
   status                TEXT        NOT NULL DEFAULT 'nuevo' CHECK (status IN (
-                                      'nuevo', 'contactado', 'en_uso', 'cerrado', 'descartado'))
+                                      'nuevo', 'contactado', 'en_uso', 'cerrado', 'descartado')),
+
+  -- Geography consistency without a trigger. A composite foreign key uses MATCH
+  -- SIMPLE by default, so it is NOT checked when any of its columns is NULL:
+  --   ('la-enea', 'tesorito')  valid pair              -> accepted
+  --   ('la-enea', 'san-jose')  barrio in another comuna -> rejected
+  --   (NULL,      'tesorito')  zone assigned by a moderator, no barrio -> accepted
+  --   (NULL,      NULL)        unresolved, pending moderation          -> accepted
+  -- The CHECK closes the only remaining nonsense: a barrio without its comuna.
+  FOREIGN KEY (neighborhood_code, comuna_code)
+    REFERENCES neighborhoods (neighborhood_code, comuna_code),
+  CONSTRAINT help_offers_geo_consistent CHECK (
+    neighborhood_code IS NULL OR comuna_code IS NOT NULL
+  )
 );
 
 CREATE TRIGGER help_offers_touch
@@ -302,8 +406,12 @@ CREATE TRIGGER help_offers_touch
   FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
 
 CREATE INDEX help_offers_created_at_idx ON help_offers (created_at DESC);
-CREATE INDEX help_offers_lookup_idx     ON help_offers (contribution_type, municipality);
+CREATE INDEX help_offers_lookup_idx     ON help_offers (contribution_type, comuna_code);
 CREATE INDEX help_offers_status_idx     ON help_offers (status, created_at DESC);
+
+-- FK indexes: comuna_code is not the leftmost column above.
+CREATE INDEX help_offers_comuna_idx       ON help_offers (comuna_code);
+CREATE INDEX help_offers_neighborhood_idx ON help_offers (neighborhood_code, comuna_code);
 
 -- No public view: RF-3.11 gives the anon role no read path here at all.
 
@@ -329,7 +437,8 @@ CREATE TABLE info_resources (
   name                  TEXT        NOT NULL CHECK (length(name) BETWEEN 2 AND 200),
   description           TEXT        CHECK (length(description) <= 4000),
   address               TEXT        CHECK (length(address) <= 240),
-  municipality          TEXT        NOT NULL CHECK (length(municipality) <= 120),
+  neighborhood_code     TEXT,
+  comuna_code           TEXT        REFERENCES comunas(comuna_code),
 
   -- RF-5.3. Addition to the source document.
   meeting_point         TEXT        CHECK (length(meeting_point) <= 400),
@@ -363,6 +472,19 @@ CREATE TABLE info_resources (
                           setweight(to_tsvector('spanish', coalesce(description, '')), 'B')
                         ) STORED,
 
+  -- Geography consistency without a trigger. A composite foreign key uses MATCH
+  -- SIMPLE by default, so it is NOT checked when any of its columns is NULL:
+  --   ('la-enea', 'tesorito')  valid pair              -> accepted
+  --   ('la-enea', 'san-jose')  barrio in another comuna -> rejected
+  --   (NULL,      'tesorito')  zone assigned by a moderator, no barrio -> accepted
+  --   (NULL,      NULL)        unresolved, pending moderation          -> accepted
+  -- The CHECK closes the only remaining nonsense: a barrio without its comuna.
+  FOREIGN KEY (neighborhood_code, comuna_code)
+    REFERENCES neighborhoods (neighborhood_code, comuna_code),
+  CONSTRAINT info_resources_geo_consistent CHECK (
+    neighborhood_code IS NULL OR comuna_code IS NOT NULL
+  ),
+
   CONSTRAINT info_resources_verified_has_timestamp CHECK (
     status <> 'verificado' OR verified_at IS NOT NULL
   )
@@ -374,8 +496,12 @@ CREATE TRIGGER info_resources_touch
 
 -- RF-5.1 filters, restricted to what the public actually reads.
 CREATE INDEX info_resources_published_idx
-  ON info_resources (category, municipality)
+  ON info_resources (category, comuna_code)
   WHERE is_published;
+
+-- FK indexes: neither leftmost nor unconditional above.
+CREATE INDEX info_resources_comuna_idx       ON info_resources (comuna_code);
+CREATE INDEX info_resources_neighborhood_idx ON info_resources (neighborhood_code, comuna_code);
 
 CREATE INDEX info_resources_search_idx
   ON info_resources USING GIN (search_vector);
@@ -474,6 +600,8 @@ CREATE INDEX moderation_log_created_idx ON moderation_log (created_at DESC);
 -- 9. Row Level Security — TRD section 8.5
 -- =============================================================================
 
+ALTER TABLE comunas              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE neighborhoods        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE help_requests        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE help_offers          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE info_resources       ENABLE ROW LEVEL SECURITY;
@@ -482,15 +610,72 @@ ALTER TABLE staff_members        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE moderation_log       ENABLE ROW LEVEL SECURITY;
 
 -- Membership test used by every staff policy. Authenticated is not enough.
-CREATE OR REPLACE FUNCTION is_staff()
+--
+-- Four things about this function are deliberate, and three of them are easy to
+-- get wrong:
+--
+--   1. It lives in a PRIVATE schema, not in public. A SECURITY DEFINER function
+--      bypasses RLS on whatever it touches, so it must not be callable directly
+--      by anon or authenticated. What blocks the direct call is the ABSENCE of
+--      USAGE on the schema, not a revoked EXECUTE — see the grant block below.
+--   2. search_path is EMPTY and every reference is fully qualified. With a
+--      mutable search_path, a caller could shadow staff_members with their own
+--      table and grant themselves the role.
+--   3. auth.uid() is wrapped in a SELECT so the planner evaluates it once as an
+--      initplan instead of once per row.
+--   4. STABLE, not VOLATILE, so the planner is allowed to cache it within a
+--      statement.
+CREATE SCHEMA IF NOT EXISTS private;
+
+CREATE OR REPLACE FUNCTION private.is_staff()
 RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
-SET search_path = public
+SET search_path = ''
 AS $$
-  SELECT EXISTS (SELECT 1 FROM staff_members WHERE user_id = auth.uid());
+  SELECT EXISTS (
+    SELECT 1 FROM public.staff_members
+    WHERE user_id = (SELECT auth.uid())
+  );
 $$;
+
+-- The grants below are counter-intuitive and were verified empirically, so do
+-- not "tidy" them.
+--
+-- An RLS policy expression is evaluated with the privileges of the role running
+-- the query, NOT of the table owner. Revoking EXECUTE from `authenticated`
+-- therefore does not harden the policy — it breaks it outright, with
+-- "permission denied for function is_staff" on every read.
+--
+-- The isolation comes from the schema instead: `authenticated` never receives
+-- USAGE on `private`, so a direct `select private.is_staff()` fails with
+-- "permission denied for schema private", while the policy still evaluates.
+REVOKE EXECUTE ON FUNCTION private.is_staff() FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION private.is_staff() TO authenticated;
+-- Deliberately absent: GRANT USAGE ON SCHEMA private TO anon, authenticated;
+
+-- --- comunas and neighborhoods ----------------------------------------------
+--
+-- Public read: the forms drive their autocomplete from neighborhoods, and the
+-- board and directory render their zone filter from comunas.
+
+GRANT SELECT ON comunas, neighborhoods TO anon, authenticated;
+
+CREATE POLICY comunas_public_read ON comunas
+  FOR SELECT TO anon, authenticated USING (is_active);
+
+CREATE POLICY neighborhoods_public_read ON neighborhoods
+  FOR SELECT TO anon, authenticated USING (is_active);
+
+GRANT INSERT, UPDATE ON comunas, neighborhoods TO authenticated;
+
+CREATE POLICY comunas_staff_write ON comunas
+  FOR ALL TO authenticated USING ((SELECT private.is_staff())) WITH CHECK ((SELECT private.is_staff()));
+
+CREATE POLICY neighborhoods_staff_write ON neighborhoods
+  FOR ALL TO authenticated USING ((SELECT private.is_staff())) WITH CHECK ((SELECT private.is_staff()));
+
 
 -- --- help_requests -----------------------------------------------------------
 --
@@ -501,7 +686,8 @@ $$;
 
 REVOKE ALL ON help_requests FROM anon, authenticated;
 
-GRANT INSERT (reference_code, category, description, municipality, sector, address,
+GRANT INSERT (reference_code, category, description, sector, neighborhood_code,
+              comuna_code, address,
               latitude, longitude, affected_people, contact_name, contact_phone,
               photo_path, consent_accepted_at, public_consent_at)
   ON help_requests TO anon;
@@ -521,10 +707,10 @@ CREATE POLICY help_requests_anon_insert ON help_requests
 GRANT SELECT, UPDATE ON help_requests TO authenticated;
 
 CREATE POLICY help_requests_staff_select ON help_requests
-  FOR SELECT TO authenticated USING (is_staff());
+  FOR SELECT TO authenticated USING ((SELECT private.is_staff()));
 
 CREATE POLICY help_requests_staff_update ON help_requests
-  FOR UPDATE TO authenticated USING (is_staff()) WITH CHECK (is_staff());
+  FOR UPDATE TO authenticated USING ((SELECT private.is_staff())) WITH CHECK ((SELECT private.is_staff()));
 
 -- The public projection. anon reaches the data ONLY through here.
 GRANT SELECT ON public_help_requests TO anon, authenticated;
@@ -534,7 +720,8 @@ GRANT SELECT ON public_help_requests TO anon, authenticated;
 REVOKE ALL ON help_offers FROM anon, authenticated;
 
 GRANT INSERT (reference_code, contributor_type, contributor_name, contribution_type,
-              description, capacity, municipality, sector, latitude, longitude,
+              description, capacity, sector, neighborhood_code, comuna_code,
+              latitude, longitude,
               availability, contact_phone, contact_email, consent_accepted_at)
   ON help_offers TO anon;
 
@@ -545,10 +732,10 @@ CREATE POLICY help_offers_anon_insert ON help_offers
 GRANT SELECT, UPDATE ON help_offers TO authenticated;
 
 CREATE POLICY help_offers_staff_select ON help_offers
-  FOR SELECT TO authenticated USING (is_staff());
+  FOR SELECT TO authenticated USING ((SELECT private.is_staff()));
 
 CREATE POLICY help_offers_staff_update ON help_offers
-  FOR UPDATE TO authenticated USING (is_staff()) WITH CHECK (is_staff());
+  FOR UPDATE TO authenticated USING ((SELECT private.is_staff())) WITH CHECK ((SELECT private.is_staff()));
 
 -- --- info_resources ----------------------------------------------------------
 
@@ -560,7 +747,7 @@ CREATE POLICY info_resources_public_read ON info_resources
 GRANT INSERT, UPDATE, DELETE ON info_resources TO authenticated;
 
 CREATE POLICY info_resources_staff_all ON info_resources
-  FOR ALL TO authenticated USING (is_staff()) WITH CHECK (is_staff());
+  FOR ALL TO authenticated USING ((SELECT private.is_staff())) WITH CHECK ((SELECT private.is_staff()));
 
 -- --- info_resource_photos ----------------------------------------------------
 
@@ -576,7 +763,7 @@ CREATE POLICY info_resource_photos_public_read ON info_resource_photos
 GRANT INSERT, UPDATE, DELETE ON info_resource_photos TO authenticated;
 
 CREATE POLICY info_resource_photos_staff_all ON info_resource_photos
-  FOR ALL TO authenticated USING (is_staff()) WITH CHECK (is_staff());
+  FOR ALL TO authenticated USING ((SELECT private.is_staff())) WITH CHECK ((SELECT private.is_staff()));
 
 -- --- staff_members and moderation_log ---------------------------------------
 
@@ -586,15 +773,15 @@ REVOKE ALL ON moderation_log FROM anon, authenticated;
 GRANT SELECT ON staff_members TO authenticated;
 
 CREATE POLICY staff_members_self_read ON staff_members
-  FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_staff());
+  FOR SELECT TO authenticated USING (user_id = (SELECT auth.uid()) OR (SELECT private.is_staff()));
 
 GRANT SELECT, INSERT ON moderation_log TO authenticated;
 
 CREATE POLICY moderation_log_staff_read ON moderation_log
-  FOR SELECT TO authenticated USING (is_staff());
+  FOR SELECT TO authenticated USING ((SELECT private.is_staff()));
 
 CREATE POLICY moderation_log_staff_insert ON moderation_log
-  FOR INSERT TO authenticated WITH CHECK (is_staff());
+  FOR INSERT TO authenticated WITH CHECK ((SELECT private.is_staff()));
 
 -- No UPDATE or DELETE policy anywhere on moderation_log: an audit trail that
 -- can be rewritten is not an audit trail.
@@ -640,7 +827,7 @@ CREATE POLICY moderation_log_staff_insert ON moderation_log
 --   BRIN indexes   — for very large naturally ordered data. B-tree on created_at
 --                    is correct at this size.
 --
---   PostGIS        — the MVP filters by municipality text. No radius, distance
+--   PostGIS        — the MVP filters by comuna. No radius, distance
 --                    or polygon query exists in the TRD. Adding it now would be
 --                    speculative.
 --

@@ -6,7 +6,9 @@
 | --- | --- |
 | Documento fuente | `MVP — Plataforma Inteligente de Respuesta y Coordinación ante Emergencias (1).md` |
 | Alcance | Tres módulos del documento fuente, con las necesidades y los aportes acoplados por un tablero público |
+| Cobertura territorial | **Municipio de Manizales**, urbano y rural |
 | Artefacto acompañante | [`docs/data-model.sql`](./data-model.sql) — DDL completo |
+| Plan de ejecución | [`docs/implementation/`](./implementation/README.md) — nueve fases con sus unidades de trabajo |
 
 Este documento es la fuente de verdad técnica de la plataforma. Define qué se construye, con qué tecnología, sobre qué modelo de datos y bajo qué criterios se considera terminado.
 
@@ -52,7 +54,15 @@ Más la pantalla principal.
 
 El tablero de necesidades no existe en el documento fuente. Es la pieza que permite acoplar los módulos 1 y 3: sin una superficie pública de lectura, una necesidad publicada no puede llegar a quien la resuelve.
 
-### 1.3 Fuera del alcance
+### 1.3 Cobertura territorial
+
+La plataforma cubre **únicamente el municipio de Manizales**, en su zona urbana y rural. No se pide el municipio en ningún formulario: sería un campo con una sola respuesta posible, y en un formulario que debe completarse en 90 segundos eso es un toque a cambio de nada.
+
+El eje geográfico es, por tanto, un nivel más abajo: la **comuna** —once urbanas más los corregimientos rurales— es lo que filtra el tablero, el directorio y el emparejamiento. La persona escribe su **barrio**, que es lo que conoce, y el sistema deriva la comuna.
+
+Extender la plataforma a otro municipio es una migración conocida y acotada: añadir una tabla de municipios y una clave foránea en `comunas`. Una sola tabla, no tres. No se construye ahora porque sería estructura especulativa.
+
+### 1.4 Fuera del alcance
 
 | Componente | Motivo |
 | --- | --- |
@@ -205,9 +215,9 @@ El formulario funciona sin JavaScript. Es un `<form>` HTML apuntando a una Serve
 
 ```
 Formulario Quiero Ayudar (Client Component mínimo)
-  → el usuario selecciona tipo de aporte y municipio
+  → el usuario selecciona tipo de aporte y comuna
   → debounce de 300 ms
-  → GET /api/necesidades?contribution=<t>&municipality=<m>
+  → GET /api/necesidades?contribution=<t>&comuna=<c>
        → Route Handler (servidor)
            → traduce tipo de aporte a categorías (§6)
            → consulta la vista pública, tope de 20 filas
@@ -248,12 +258,13 @@ Sin JavaScript, el bloque de coincidencias no se renderiza durante el llenado y 
 | ID | Requisito |
 | --- | --- |
 | RF-1.1 | Formulario de una sola pantalla, sin asistente por pasos. |
-| RF-1.2 | Campos obligatorios: categoría, descripción, municipio, nombre de contacto, teléfono de contacto, consentimiento de tratamiento y consentimiento de publicación. |
+| RF-1.2 | Campos obligatorios: categoría, descripción, **barrio o sector**, nombre de contacto, teléfono de contacto, consentimiento de tratamiento y consentimiento de publicación. No se pide el municipio: la plataforma cubre solo Manizales. |
 | RF-1.3 | Campos opcionales: sector, barrio o vereda; dirección; número de personas afectadas; ubicación en mapa; foto. |
 | RF-1.4 | Categorías: Salud · Vivienda y daños estructurales · Albergue · Alimentos · Agua · Sangre · Mascotas · Movilidad y vías · Servicios públicos · Personas desaparecidas · Atención psicológica · Transporte · Remoción de escombros · Otros. |
 | RF-1.5 | El formulario advierte, antes del campo de teléfono y de forma visualmente destacada, que el nombre, el teléfono y la foto serán visibles públicamente para cualquier persona en internet. No es texto legal en letra pequeña: es una advertencia de primer nivel. |
 | RF-1.6 | Dos casillas de consentimiento separadas, ambas sin marcar por defecto: tratamiento de datos personales, y publicación del nombre, el teléfono y la foto en un tablero público. Sin ambas no se envía. |
-| RF-1.7 | La ubicación se captura con la geolocalización del navegador solo mediante una acción explícita del usuario. Nunca automáticamente. Si se deniega, el municipio y el sector en texto son suficientes. |
+| RF-1.7 | La ubicación se captura con la geolocalización del navegador solo mediante una acción explícita del usuario. Nunca automáticamente. Si se deniega, el barrio o sector en texto es suficiente. |
+| RF-1.7b | El campo de barrio es **texto con autocompletado** contra el catálogo de barrios de Manizales. Si el texto coincide con un barrio, se registra también su comuna y la necesidad queda filtrable por zona. **Si no coincide, se guarda el texto tal cual y la zona queda sin asignar**, para que un Moderador la resuelva. Nunca se rechaza un envío por un barrio ausente del catálogo. |
 | RF-1.8 | La foto es opcional, un solo archivo, comprimida en cliente con objetivo de 500 KB y tope de 5 MB sin compresión. Es **pública** una vez publicada la necesidad. |
 | RF-1.9 | Junto al campo de foto, advertencia de no incluir personas identificables ni documentos de identidad. |
 | RF-1.10 | Todos los metadatos de la imagen se eliminan en el servidor antes de almacenarla (§8.2). |
@@ -269,9 +280,10 @@ La prioridad manual es consecuencia de que no haya clasificación automática. N
 | ID | Requisito |
 | --- | --- |
 | RF-2.1 | Accesible sin autenticación. Lista las necesidades publicadas, más recientes primero. |
-| RF-2.2 | Filtros por categoría y municipio. Búsqueda por texto sobre la descripción. |
+| RF-2.2 | Filtros por categoría y **comuna**, ambos poblados desde su catálogo, más una opción explícita **«zona sin asignar»**. Búsqueda por texto sobre la descripción y sobre el barrio escrito. |
 | RF-2.3 | Paginación con tope duro de 20 elementos por página. No existe vista ni parámetro que devuelva el conjunto completo. |
-| RF-2.4 | Cada tarjeta muestra categoría, distintivo de moderación, antigüedad relativa, municipio, sector, descripción, número de afectados, nombre de contacto y teléfono como enlace `tel:`. |
+| RF-2.4 | Cada tarjeta muestra categoría, distintivo de moderación, antigüedad relativa, **barrio tal como lo escribió la persona y su comuna cuando esté resuelta**, descripción, número de afectados, nombre de contacto y teléfono como enlace `tel:`. |
+| RF-2.4b | Una necesidad con la zona sin asignar **aparece en el tablero igual que las demás**, con su barrio en texto. No se oculta ni se posterga: quien vive en un asentamiento informal o en una vereda sin registrar es de quien menos se puede prescindir. |
 | RF-2.5 | Distintivo de moderación con color y texto: **Sin verificar** · **Verificado**, con la fuente que verificó · **Atendida** · **Duplicada**. |
 | RF-2.6 | Las necesidades atendidas permanecen visibles 48 horas marcadas como tales y luego se ocultan. Quien va en camino necesita saber que ya fue resuelta, no que desapareció. |
 | RF-2.7 | Vista de detalle por código de radicado, con la ubicación aproximada en mapa y la foto cuando existan. |
@@ -285,8 +297,9 @@ La prioridad manual es consecuencia de que no haya clasificación automática. N
 | --- | --- |
 | RF-3.1 | Primera pregunta: **¿Cómo puedes ayudar?**, como selección de tipo de aporte. |
 | RF-3.2 | Tipos de aporte: Dinero · Alimentos · Agua · Ropa y cobijas · Medicamentos o insumos permitidos · Transporte · Vehículos · Maquinaria · Herramientas · Alojamiento · Alimento para mascotas · Servicios profesionales · Tiempo como voluntario · Otro. |
-| RF-3.3 | Campos obligatorios: tipo de aportante (persona, empresa u organización), nombre, tipo de aporte, municipio, teléfono y consentimiento de tratamiento. |
-| RF-3.4 | A medida que el usuario selecciona tipo de aporte y municipio, y antes de enviar nada, la misma pantalla muestra el número de necesidades coincidentes y una lista de hasta 20, con enlace al detalle. Se actualiza con debounce de 300 ms. |
+| RF-3.3 | Campos obligatorios: tipo de aportante (persona, empresa u organización), nombre, tipo de aporte y teléfono, más el consentimiento de tratamiento. La comuna es opcional y sirve para acotar el emparejamiento. |
+| RF-3.4 | A medida que el usuario selecciona tipo de aporte y, si quiere, comuna, y antes de enviar nada, la misma pantalla muestra el número de necesidades coincidentes y una lista de hasta 20, con enlace al detalle. Se actualiza con debounce de 300 ms. |
+| RF-3.4b | Sin comuna seleccionada, el emparejamiento abarca todo Manizales, **incluidas las necesidades con zona sin asignar**. Filtrar por comuna es una forma de acotar, nunca un requisito para ver resultados. |
 | RF-3.5 | La correspondencia entre tipo de aporte y categorías de necesidad se resuelve con la tabla de la sección 6. No es coincidencia literal de cadenas: los dos vocabularios son distintos. |
 | RF-3.6 | Si no hay coincidencias, se dice explícitamente y se ofrece ver el tablero completo. Nunca una lista vacía sin explicación. |
 | RF-3.7 | Sin JavaScript, el bloque en vivo no se renderiza y la pantalla de confirmación muestra las necesidades coincidentes tras enviar. |
@@ -316,9 +329,9 @@ Módulo de solo lectura. El ciudadano no escribe nada aquí.
 
 | ID | Requisito |
 | --- | --- |
-| RF-5.1 | Listado filtrable por categoría y municipio, con búsqueda por texto sobre nombre y descripción. |
+| RF-5.1 | Listado filtrable por categoría y comuna, con búsqueda por texto sobre nombre y descripción. |
 | RF-5.2 | Categorías: Albergues · Hospitales · Centros médicos · Donación de sangre · Puntos de donación · Centros de acopio · Atención de mascotas · Personas desaparecidas · Evaluación de viviendas · Servicios públicos · Bomberos · Defensa Civil · Cruz Roja · Alcaldías · Gobernación · Líneas de atención · Cierres viales · Otros. |
-| RF-5.3 | Cada recurso muestra nombre, categoría, descripción, dirección, municipio, punto de encuentro, teléfonos, horario, fuente, estado de verificación y fecha y hora de última verificación. |
+| RF-5.3 | Cada recurso muestra nombre, categoría, descripción, dirección, barrio y comuna, punto de encuentro, teléfonos, horario, fuente, estado de verificación y fecha y hora de última verificación. |
 | RF-5.4 | Los teléfonos son enlaces `tel:`. La dirección abre la aplicación de mapas del dispositivo. |
 | RF-5.5 | Estado como distintivo visual: **Verificado · Pendiente de validar · Desactualizado · Cerrado**. Color y texto; el color nunca es el único portador de la información. |
 | RF-5.6 | La fecha de última verificación es visible en la tarjeta del listado, no solo en el detalle. Si supera 72 horas, se marca visualmente como potencialmente desactualizada. |
@@ -332,8 +345,9 @@ Módulo de solo lectura. El ciudadano no escribe nada aquí.
 | ID | Requisito |
 | --- | --- |
 | RF-6.1 | Ruta protegida. Solo usuarios registrados como miembros del equipo. Sin registro público. |
-| RF-6.2 | Lista de necesidades con filtros por categoría, municipio, estado de moderación y prioridad. |
+| RF-6.2 | Lista de necesidades con filtros por categoría, comuna, estado de moderación y prioridad, **incluido un filtro para las que tienen la zona sin asignar**, que es la cola de trabajo de RF-6.3b. |
 | RF-6.3 | Sobre una necesidad, el Moderador puede marcarla verificada indicando la fuente, marcarla duplicada de otra, ocultarla, retirarla y asignarle prioridad. |
+| RF-6.3b | El Moderador **asigna la comuna** a una necesidad cuyo barrio no coincidió con el catálogo, y puede añadir ese barrio al catálogo para que la próxima vez se resuelva solo. |
 | RF-6.4 | El Moderador puede retirar la foto de una necesidad sin ocultar la necesidad completa. Una foto inapropiada no debe costar la visibilidad de una necesidad legítima. |
 | RF-6.5 | Lista de aportes registrados con sus datos de contacto, para contacto proactivo. |
 | RF-6.6 | Gestión del directorio: crear, editar, publicar y despublicar recursos, cargar fotos con descripción y actualizar el estado y la fecha de verificación. |
@@ -427,7 +441,7 @@ Español de Colombia en toda la interfaz, con registro neutro y llano, sin jerga
 
 ### 8.1 Qué publica la plataforma
 
-La plataforma publica en internet abierto el nombre, el teléfono, la categoría de necesidad, el municipio, el sector, la ubicación aproximada y la foto de personas que acaban de sufrir una emergencia. Sin autenticación, sin barrera y sin verificación previa.
+La plataforma publica en internet abierto el nombre, el teléfono, la categoría de necesidad, el barrio, la comuna, la ubicación aproximada y la foto de personas que acaban de sufrir una emergencia. Sin autenticación, sin barrera y sin verificación previa.
 
 Es el requisito central del producto: reduce la fricción a cero y permite que un vecino con un carro llame en treinta segundos. La ingeniería lo implementa y lo endurece hasta donde es posible sin contradecirlo.
 
@@ -477,13 +491,14 @@ Enunciado explícitamente para que la aceptación del modelo sea informada.
 | RNF-6.3 | Aviso de privacidad accesible que declare finalidad, responsable del tratamiento, el carácter público del nombre, el teléfono y la foto, con quién se comparte, tiempo de conservación, canal para ejercer derechos y canal alternativo de retiro. |
 | RNF-6.4 | El responsable del tratamiento debe ser una entidad jurídica identificada. |
 | RNF-6.5 | Los datos de contacto de aportantes no se muestran públicamente. |
-| RNF-6.6 | Conservación de 12 meses. Después, anonimización de nombre, teléfono, correo y coordenadas, y eliminación de la foto, conservando los campos agregables —categoría, municipio, fecha— con fines estadísticos. |
+| RNF-6.6 | Conservación de 12 meses. Después, anonimización de nombre, teléfono, correo y coordenadas, y eliminación de la foto, conservando los campos agregables —categoría, comuna, fecha— con fines estadísticos. |
 | RNF-6.7 | Derecho de supresión atendible sin cuenta y por canal manual. |
 
 ### 8.5 Matriz de acceso
 
 | Objeto | Rol `anon` | Rol autenticado del equipo |
 | --- | --- | --- |
+| `comunas`, `neighborhoods` | `SELECT` de los registros activos. El formulario alimenta su autocompletado desde `neighborhoods`, y los filtros de zona desde `comunas`. | Todo |
 | `help_requests` (tabla) | Sin acceso de lectura ni de modificación. `INSERT` restringido a una lista explícita de columnas. | `SELECT`, `UPDATE` |
 | `public_help_requests` (vista) | `SELECT`. Columnas acotadas, coordenadas redondeadas, filtrada a estados públicos y no caducados. | `SELECT` |
 | `help_offers` | `INSERT` en columnas explícitas. Sin `SELECT`. | `SELECT`, `UPDATE` |
@@ -506,6 +521,8 @@ PostgreSQL. Nombres en inglés, `snake_case`. El DDL completo está en [`docs/da
 
 | Tabla | Propósito | Lectura anónima |
 | --- | --- | --- |
+| `comunas` | Catálogo de comunas y corregimientos de Manizales. Eje de filtrado por zona | Sí, los activos. |
+| `neighborhoods` | Catálogo de barrios, cada uno con su comuna. Alimenta el autocompletado | Sí, los activos. |
 | `help_requests` | Necesidades publicadas por ciudadanos | No. Solo a través de la vista. |
 | `public_help_requests` (vista) | Proyección pública acotada de las necesidades | Sí. Única superficie pública. |
 | `help_offers` | Aportes registrados | No. Nunca. |
@@ -529,7 +546,7 @@ Las claves primarias no se exponen nunca, así que una clave secuencial no filtr
 
 El alfabeto del código excluye I, L y O por ambigüedad visual al dictarlas, y U para evitar que el generador produzca palabras ofensivas por accidente. La unicidad la garantiza la restricción `UNIQUE`, que es lo que hace correcto el reintento por conflicto en la aplicación.
 
-### 9.3 Estados: dos ejes ortogonales
+### 9.3 Vocabularios controlados y estados
 
 `help_requests` tiene dos columnas de estado, no una:
 
@@ -541,6 +558,36 @@ El alfabeto del código excluye I, L y O por ambigüedad visual al dictarlas, y 
 Colapsarlas en un solo enumerado produce estados imposibles de representar: una necesidad puede estar verificada y atendida al mismo tiempo, y con un único campo habría que elegir cuál de los dos hechos se pierde.
 
 Todos los conjuntos de valores se modelan como `text` con `CHECK`, no como tipo `ENUM` nativo. Las categorías de una emergencia son de negocio y cambiarán entre eventos: un `CHECK` se reemplaza en una migración, mientras que de un `ENUM` nunca se puede eliminar un valor.
+
+**La geografía es la excepción: son tablas de catálogo con clave foránea, no `CHECK`.** La interfaz alimenta su autocompletado directamente desde `neighborhoods`, y un Moderador tiene que poder añadir un barrio que no estaba registrado sin necesidad de una migración.
+
+Que la zona no sea texto libre no es una preferencia de estilo. Es la clave con la que se empareja un aporte con una necesidad y con la que se filtran el tablero y el directorio. Con texto libre, «La Enea», «la enea» y «Enea» serían tres grupos distintos y el emparejamiento devolvería cero coincidencias sin ningún error que lo explicara. La clave foránea convierte ese fallo silencioso en un rechazo inmediato.
+
+### 9.3b Tres columnas para la geografía, y por qué
+
+Cada necesidad localizada lleva tres columnas, y la división existe para resolver una tensión concreta: **el filtro fiable y el registro honesto de lo que la persona dijo no son lo mismo.**
+
+| Columna | Contenido | Obligatoria |
+| --- | --- | --- |
+| `sector` | El barrio tal como lo escribió la persona, literal | Sí |
+| `neighborhood_code` | Se llena solo si ese texto coincidió con el catálogo | No |
+| `comuna_code` | Se deriva de la coincidencia, o la asigna un Moderador | No |
+
+Alguien en un asentamiento informal, en una vereda o en una urbanización recién construida escribirá un nombre que no está en ningún catálogo. Rechazarlo no es una opción, así que **el texto se conserva y la zona queda sin asignar hasta que un humano la resuelva**.
+
+De ahí se deriva una decisión que parece un detalle y no lo es: la vista pública une la geografía con `LEFT JOIN` y no con un `JOIN` interno. Con un `JOIN` interno, toda necesidad sin zona resuelta desaparecería del tablero, y eso ocultaría precisamente a las personas cuyo barrio no figura en ningún mapa. Sería un fallo de equidad, no de rendimiento.
+
+La coherencia entre barrio y comuna se garantiza con una **clave foránea compuesta**, sin ningún disparador. Una clave compuesta usa `MATCH SIMPLE` por defecto, que no se comprueba cuando alguna de sus columnas es nula, y eso da exactamente el comportamiento que se busca:
+
+| Par | Significado | Resultado |
+| --- | --- | --- |
+| `('la-enea', 'tesorito')` | Par válido del catálogo | Aceptado |
+| `('la-enea', 'san-jose')` | Barrio atribuido a otra comuna | Rechazado |
+| `(NULL, 'tesorito')` | Zona asignada por un Moderador, sin barrio | Aceptado |
+| `(NULL, NULL)` | Sin resolver, pendiente de moderación | Aceptado |
+| `('la-enea', NULL)` | Barrio sin su comuna | Rechazado por un `CHECK` |
+
+La clave primaria de ambos catálogos es un identificador legible en minúsculas: es estable, sirve en una URL y no depende de una fuente externa para ser correcto.
 
 ### 9.4 Restricciones de coherencia
 
@@ -623,7 +670,13 @@ Estas decisiones no son técnicas y no bloquean la implementación. Bloquean la 
 - [ ] La necesidad aparece en el tablero público en menos de 60 segundos, con distintivo «Sin verificar».
 - [ ] El formulario advierte de forma destacada, antes del campo de teléfono, que el nombre, el teléfono y la foto serán públicos.
 - [ ] No se puede enviar sin marcar ambas casillas de consentimiento.
-- [ ] Cualquier persona, sin autenticarse, filtra el tablero por categoría y municipio y llama con un toque.
+- [ ] Cualquier persona, sin autenticarse, filtra el tablero por categoría y comuna y llama con un toque.
+- [ ] El barrio se escribe con autocompletado y, al coincidir, la comuna queda registrada sola.
+- [ ] Un barrio ausente del catálogo **no impide publicar**: se guarda el texto y la zona queda sin asignar.
+- [ ] Una necesidad con zona sin asignar aparece en el tablero. Verificado con prueba automatizada sobre la vista.
+- [ ] Un barrio atribuido a una comuna que no le corresponde se rechaza en la base de datos. Verificado con prueba automatizada.
+- [ ] El tablero ofrece el filtro «zona sin asignar».
+- [ ] Un Moderador asigna la comuna a una necesidad sin resolver y puede añadir ese barrio al catálogo.
 - [ ] El tablero responde `noindex` y `robots.txt` lo excluye. Verificado con prueba automatizada.
 
 **Fotos**
@@ -635,7 +688,8 @@ Estas decisiones no son técnicas y no bloquean la implementación. Bloquean la 
 
 **Emparejamiento**
 
-- [ ] Al seleccionar tipo de aporte y municipio, el contador y la lista de necesidades coincidentes se actualizan sin enviar el formulario.
+- [ ] Al seleccionar tipo de aporte y, opcionalmente, comuna, el contador y la lista de necesidades coincidentes se actualizan sin enviar el formulario.
+- [ ] Sin comuna seleccionada, el emparejamiento incluye las necesidades con zona sin asignar.
 - [ ] La correspondencia respeta la tabla de la sección 6. Verificado con una prueba unitaria por cada fila de la tabla.
 - [ ] Con JavaScript deshabilitado, el formulario se envía y la confirmación muestra las coincidencias.
 - [ ] Un aporte de tipo Dinero nunca solicita datos financieros, no muestra emparejamiento y redirige a entidades verificadas.
