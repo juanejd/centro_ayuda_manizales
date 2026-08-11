@@ -29,6 +29,8 @@ export const metadata: Metadata = {
     "Directorio filtrable de albergues, hospitales y recursos oficiales verificados para la emergencia en Manizales.",
 };
 
+export const revalidate = 300;
+
 type SearchParams = Record<string, string | string[] | undefined>;
 
 function firstValue(value: string | string[] | undefined): string | undefined {
