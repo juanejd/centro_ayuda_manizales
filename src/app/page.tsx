@@ -1,11 +1,13 @@
 import Link from "next/link";
 
+import { getActiveAlerts } from "@/modules/info-resources/alerts";
 import {
   PRIORITY_EMERGENCY_LINES,
   normalizePhoneText,
   toTelHref,
   type PriorityEmergencyLine,
 } from "@/modules/info-resources/domain";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import { createServerSupabaseClient } from "@/shared/supabase/server";
 
 export const revalidate = 300;
@@ -73,6 +75,7 @@ async function getEmergencyLines(): Promise<readonly PriorityEmergencyLine[]> {
 
 export default async function HomePage() {
   const emergencyLines = await getEmergencyLines();
+  const activeAlerts = getActiveAlerts(new Date());
 
   return (
     <main className="bg-background text-foreground min-h-screen px-4 py-5 sm:px-6 sm:py-8">
@@ -83,6 +86,42 @@ export default async function HomePage() {
           </p>
           <h1 className="mt-2 text-2xl sm:text-3xl">¿Qué necesitas hacer?</h1>
         </header>
+
+        {activeAlerts.length > 0 && (
+          <section aria-label="Alertas vigentes" className="flex flex-col gap-3">
+            {activeAlerts.map((alert) => {
+              const isLinkSource = alert.source.startsWith("http");
+
+              return (
+                <Alert key={alert.title} variant="default">
+                  <p className="label-caps text-muted-foreground">
+                    Alerta vigente
+                  </p>
+                  <AlertTitle className="text-base font-bold">
+                    {alert.title}
+                  </AlertTitle>
+                  <AlertDescription>{alert.description}</AlertDescription>
+                  <p className="mt-1 text-xs">
+                    {isLinkSource ? (
+                      <a
+                        href={alert.source}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex min-h-12 items-center underline underline-offset-2"
+                      >
+                        Fuente
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        Fuente: {alert.source}
+                      </span>
+                    )}
+                  </p>
+                </Alert>
+              );
+            })}
+          </section>
+        )}
 
         <nav aria-label="Acciones principales">
           <ul className="grid gap-3">
