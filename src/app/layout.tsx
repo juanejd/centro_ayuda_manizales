@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import "./globals.css";
 
@@ -28,17 +27,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        <div className="flex-1">{children}</div>
-        <footer className="border-t border-border px-4 py-4 text-center text-xs text-muted-foreground">
-          <Link
-            href="/aviso-de-privacidad"
-            className="inline-flex min-h-12 items-center underline underline-offset-4"
-          >
-            Aviso de privacidad
-          </Link>
-        </footer>
-      </body>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

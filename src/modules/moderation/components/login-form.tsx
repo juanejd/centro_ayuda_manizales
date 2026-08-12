@@ -22,9 +22,13 @@ export function LoginForm() {
   const [state, formAction] = useActionState(signIn, null);
 
   return (
+    // No explicit method: signIn is a real Server Action, so React infers
+    // method="POST" for both SSR and the JS-enabled path. A hand-written
+    // method="post" here previously caused a hydration mismatch (server
+    // "post" vs React's inferred "POST") — see publish-form.tsx's longer
+    // note on the same issue.
     <form
       action={formAction}
-      method="post"
       className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4"
     >
       {state?.formError ? (

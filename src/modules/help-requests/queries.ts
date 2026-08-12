@@ -9,6 +9,20 @@ import {
 import { createServerSupabaseClient } from "@/shared/supabase/server";
 import { createServiceRoleSupabaseClient } from "@/shared/supabase/service-role";
 
+const PHOTO_BUCKET = "help-request-photos";
+
+// Shared by every page that renders a NeedCard or a need's own photo (the
+// board, its detail page, the home page preview) so the bucket name and the
+// getPublicUrl call live in exactly one place.
+export function resolveHelpRequestPhotoUrl(
+  photoPath: string | null,
+): string | null {
+  if (!photoPath) return null;
+  const supabase = createServerSupabaseClient();
+  return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(photoPath).data
+    .publicUrl;
+}
+
 export type ComunaOption = {
   comuna_code: string;
   name: string;

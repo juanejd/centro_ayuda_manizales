@@ -560,3 +560,71 @@ Se incorporaron capturas de publicaciones de la Alcaldía de Manizales / cuenta 
 ---
 
 **Último corte incluido en este archivo:** 2026-08-10 23:05 COT.
+
+
+1. Comunas de Manizales
+Atardeceres
+San José
+Cumanday
+La Estación
+Ciudadela del Norte
+Ecoturístico Cerro de Oro
+Tesorito
+Palogrande
+Universitaria
+La Fuente
+La Macarena
+Nuevo Horizonte
+
+
+
+2. Barrios de Manizales, separados por comuna
+🟠 COMUNA 1 – ATARDECERES
+
+Barrios: La Quinta, La Linda, Sacatín Viejo, Villa Pilar, Chipre Viejo, Chipre, Campohermoso, Morrogacho, La Francia y Los Alcázares.
+
+🟠 COMUNA 2 – SAN JOSÉ
+
+Barrios: Asís, Avanzada, San Ignacio, Galán, Estrada, Las Delicias, San José y Colón.
+
+🟠 COMUNA 3 – CUMANDAY
+
+Barrios: Las Américas, Los Agustinos, Centro, San Joaquín, Campoamor y Fundadores.
+
+🟠 COMUNA 4 – LA ESTACIÓN
+
+Barrios: Santa Helena, San Jorge, El Sol, La Argentina, La Asunción, Versalles y Lleras.
+
+🟠 COMUNA 5 – CIUDADELA DEL NORTE
+
+Barrios: San Sebastián, Puertas del Sol, Sierra Morena, El Caribe, San Cayetano, Bosques del Norte, Fanny González, Altos de Capri, Villa Julia y Peralonso.
+
+🟠 COMUNA 6 – ECOTURÍSTICO CERRO DE ORO
+
+Barrios: Viveros, La Cumbre, Minitas, La Sultana, Escuela de Carabineros, Residencias Manizales, Laureles, Cerro de Oro, Alta Suiza, Baja Suiza y Colseguros.
+
+🟠 COMUNA 7 – TESORITO
+
+Barrios: San Marcel, La Alhambra, Cerros de la Alhambra, Juanchito, Los Pinos, La Enea, Lusitania y La Nubia.
+
+🟠 COMUNA 8 – PALOGRANDE
+
+Barrios: La Leonora, Los Rosales, La Rambla, Palogrande, La Estrella, Universidad, Belén, Arboleda, Palermo, Sancancio, Milán, El Trébol y Batallón.
+
+🟠 COMUNA 9 – UNIVERSITARIA
+
+Barrios: Betania, Fátima, Vivienda Popular, Pío XII, San Fernando, Camilo Torres, Las Colinas, Malhabar, Aranjuez y La Playa.
+
+🟠 COMUNA 10 – LA FUENTE
+
+Barrios: Uribe, Vélez, Colombia, González, Persia, Guamal, Arrayanes, Marmato, Cervantes, Nevado y Panamericana.
+
+🟠 COMUNA 11 – LA MACARENA
+
+Barrios: San Antonio, 20 de Julio, El Carmen, La Castellana, El Bosque, Buena Esperanza, Centenario y Estambul.
+
+🟠 COMUNA 12 – NUEVO HORIZONTE
+
+Barrios: Villahermosa, Comuneros, Porvenir, Solferino, Samaria, Sinaí, La Carola, La Carolita, Altos de Granada, Villa Café y Portón del Guamo.
+
+Importante: además de estos barrios, la Alcaldía maneja muchos sectores, urbanizaciones, conjuntos y etapas dentro de ellos —por ejemplo, Asturias, Quinta Hispania, Piamonte II, Bengala, Bosques de Niza, El Aguacate, Bajo Nevado, Villa Jardín, Chachafruto, entre muchos otros— que aparecen en operativos y programas municipales, pero no necesariamente como barrios independientes en las fichas territoriales.

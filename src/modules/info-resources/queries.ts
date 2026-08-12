@@ -13,6 +13,16 @@ import {
 import { createServerSupabaseClient } from "@/shared/supabase/server";
 
 const DEFAULT_LIST_LIMIT = 200;
+const PHOTO_BUCKET = "info-resource-photos";
+
+export function resolveResourcePhotoUrl(
+  storagePath: string | null,
+): string | null {
+  if (!storagePath) return null;
+  const supabase = createServerSupabaseClient();
+  return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(storagePath).data
+    .publicUrl;
+}
 
 export type DirectoryResource = {
   slug: string;
@@ -29,6 +39,9 @@ export type DirectoryResource = {
   status: ResourceStatus;
   verified_at: string | null;
   freshness: Freshness;
+  // Lowest sort_order photo, for the directory card thumbnail — the full
+  // ordered gallery is a detail-page concern (ResourceDetail.photos below).
+  coverPhotoPath: string | null;
 };
 
 export type ResourceDetail = DirectoryResource & {
@@ -51,12 +64,22 @@ export type ComunaOption = {
   kind: "urbana" | "rural";
 };
 
+// The photo embed is selected once, at list time, and reused for the detail
+// query below — PostgREST rejects embedding the same relation twice with
+// different column sets in one select string, so the list card's cover photo
+// and the detail page's full gallery share this one column set.
 const LIST_COLUMNS =
-  "slug, category, name, description, address, comuna_code, phones, hours, source, status, verified_at, comunas(name), neighborhoods(name)";
+  "slug, category, name, description, address, comuna_code, phones, hours, source, status, verified_at, comunas(name), neighborhoods(name), info_resource_photos(storage_path, caption, sort_order)";
 
-const DETAIL_COLUMNS = `${LIST_COLUMNS}, meeting_point, latitude, longitude, info_resource_photos(storage_path, caption, sort_order)`;
+const DETAIL_COLUMNS = `${LIST_COLUMNS}, meeting_point, latitude, longitude`;
 
 type EmbeddedName = { name: string } | { name: string }[] | null;
+
+type PhotoRow = {
+  storage_path: string;
+  caption: string | null;
+  sort_order: number;
+};
 
 type ResourceRow = {
   slug: string;
@@ -72,19 +95,13 @@ type ResourceRow = {
   verified_at: string | null;
   comunas: EmbeddedName;
   neighborhoods: EmbeddedName;
-};
-
-type PhotoRow = {
-  storage_path: string;
-  caption: string | null;
-  sort_order: number;
+  info_resource_photos: PhotoRow[] | null;
 };
 
 type ResourceDetailRow = ResourceRow & {
   meeting_point: string | null;
   latitude: number | null;
   longitude: number | null;
-  info_resource_photos: PhotoRow[] | null;
 };
 
 function embeddedName(embed: EmbeddedName): string | null {
@@ -96,6 +113,12 @@ function embeddedName(embed: EmbeddedName): string | null {
 }
 
 function toDirectoryResource(row: ResourceRow, now: Date): DirectoryResource {
+  const coverPhoto = (row.info_resource_photos ?? []).reduce<PhotoRow | null>(
+    (lowest, photo) =>
+      !lowest || photo.sort_order < lowest.sort_order ? photo : lowest,
+    null,
+  );
+
   return {
     slug: row.slug,
     category: row.category,
@@ -111,6 +134,7 @@ function toDirectoryResource(row: ResourceRow, now: Date): DirectoryResource {
     status: row.status,
     verified_at: row.verified_at,
     freshness: resolveFreshness(row, now),
+    coverPhotoPath: coverPhoto?.storage_path ?? null,
   };
 }
 

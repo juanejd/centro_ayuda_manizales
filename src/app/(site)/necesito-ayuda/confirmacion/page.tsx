@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { toTelHref } from "@/modules/info-resources/domain";
 import { getPriorityEmergencyLines } from "@/modules/info-resources/queries";
+import { CopyLinkButton } from "@/shared/components/copy-link-button";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 
 // The URL carries the manage token: never let it be indexed, cached, or
@@ -68,10 +69,16 @@ export default async function PublishConfirmationPage({
               {manageHref}
             </Link>
           </p>
+          <div className="mt-3">
+            <CopyLinkButton
+              path={`/mi-publicacion?code=${encodeURIComponent(code)}&token=${encodeURIComponent(token)}`}
+            />
+          </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Cópialo y guárdalo ahora — captura de pantalla, nota o mensaje a
-            ti mismo. Si lo pierdes, existe una ruta manual de retiro, pero es
-            más lenta.
+            Guárdalo ahora, antes de salir de esta pantalla — captura de
+            pantalla, nota o mensaje a ti mismo. No lo compartas: quien lo
+            tenga puede editar o retirar tu publicación. Si lo pierdes,
+            existe una ruta manual de retiro, pero es más lenta.
           </p>
         </div>
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { HandHeart } from "lucide-react";
 
 import { PublishForm } from "@/modules/help-requests/components/publish-form";
 import { listComunas, listNeighborhoods } from "@/modules/help-requests/queries";
@@ -16,19 +17,24 @@ export default async function NecesitoAyudaPage() {
   ]);
 
   return (
-    <main className="bg-background text-foreground min-h-screen px-4 py-5 sm:px-6 sm:py-8">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-        <header>
-          <p className="label-caps text-muted-foreground">
-            Centro de Ayuda Manizales
-          </p>
-          <h1 className="mt-2 text-2xl sm:text-3xl">Publicar una necesidad</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+    <main className="bg-background text-foreground min-h-screen">
+      <div className="border-b-2 border-emergency bg-card">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 py-8 sm:px-6 sm:py-10">
+          <div className="flex items-center gap-2">
+            <HandHeart className="size-6 shrink-0 text-emergency" aria-hidden="true" />
+            <p className="label-caps text-muted-foreground">
+              Centro de Ayuda Manizales
+            </p>
+          </div>
+          <h1 className="text-3xl sm:text-4xl">Publicar una necesidad</h1>
+          <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
             Cuéntanos qué necesitas para que otras personas puedan verlo y
             responder. No necesitas crear una cuenta.
           </p>
-        </header>
+        </div>
+      </div>
 
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
         <PublishForm comunas={comunas} neighborhoods={neighborhoods} />
       </div>
     </main>

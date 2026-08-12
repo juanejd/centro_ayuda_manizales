@@ -191,6 +191,23 @@ export function isDialable(phone: string): boolean {
   return toDialable(phone).length > 0;
 }
 
+const COLOMBIA_COUNTRY_CODE = "57";
+
+/**
+ * wa.me needs plain digits, no "+"/"#"/"*"/spaces — unlike toTelHref, which
+ * keeps those because tel: URLs support them. Phones are collected from
+ * citizens as local Colombian numbers (no country code); this platform is
+ * Manizales-only, so prepending 57 when it's missing is a safe assumption
+ * here, not a general-purpose phone formatter.
+ */
+export function toWhatsAppHref(phone: string, message: string): string {
+  const digits = toDialable(phone).replace(/\D/g, "");
+  const withCountryCode = digits.startsWith(COLOMBIA_COUNTRY_CODE)
+    ? digits
+    : `${COLOMBIA_COUNTRY_CODE}${digits}`;
+  return `https://wa.me/${withCountryCode}?text=${encodeURIComponent(message)}`;
+}
+
 export const PRIORITY_EMERGENCY_LINES = [
   { phone: "123", label: "Emergencias" },
   { phone: "123 opción 2", label: "Urgencias médicas" },

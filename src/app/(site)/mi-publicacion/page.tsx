@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import {
   CATEGORY_LABELS,
@@ -7,6 +6,7 @@ import {
   MODERATION_BADGE,
 } from "@/modules/help-requests/domain/validation";
 import { resolveManagedHelpRequest } from "@/modules/help-requests/queries";
+import { toWhatsAppHref } from "@/modules/info-resources/domain";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   title: "Gestionar mi publicación | Centro de Ayuda Manizales",
   robots: { index: false, follow: false },
 };
+
+const SUPPORT_WHATSAPP = "3117517264";
+const LOST_LINK_MESSAGE =
+  "Hola, perdí el enlace para gestionar mi publicación en el Centro de Ayuda Manizales. Mi radicado es: ";
 
 const OK_MESSAGES: Record<string, string> = {
   resuelta: "Marcada como resuelta.",
@@ -57,10 +61,15 @@ export default async function ManageHelpRequestPage({
         )}
 
         <p className="text-sm text-muted-foreground">
-          ¿Perdiste el enlace de gestión? Escríbenos por una{" "}
-          <Link href="/lineas-atencion" className="underline underline-offset-4">
-            línea de atención
-          </Link>{" "}
+          ¿Perdiste el enlace de gestión? Escríbenos por{" "}
+          <a
+            href={toWhatsAppHref(SUPPORT_WHATSAPP, LOST_LINK_MESSAGE)}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-4"
+          >
+            WhatsApp
+          </a>{" "}
           indicando tu radicado para solicitar el retiro manual.
         </p>
       </div>

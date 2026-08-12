@@ -1,12 +1,17 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { BookOpenText } from "lucide-react";
 
 import {
   CATEGORY_LABELS,
   RESOURCE_CATEGORIES,
   isResourceCategory,
 } from "@/modules/info-resources/domain";
-import { listComunas, listResources } from "@/modules/info-resources/queries";
+import {
+  listComunas,
+  listResources,
+  resolveResourcePhotoUrl,
+} from "@/modules/info-resources/queries";
 import { ResourceCard } from "@/modules/info-resources/components/resource-card";
 import { Button } from "@/shared/ui/button";
 import {
@@ -60,19 +65,24 @@ export default async function InformacionPage({
   const hasFilters = Boolean(category || comunaParam || queryParam);
 
   return (
-    <main className="bg-background text-foreground min-h-screen px-4 py-5 sm:px-6 sm:py-8">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-        <header>
-          <p className="label-caps text-muted-foreground">
-            Centro de Ayuda Manizales
-          </p>
-          <h1 className="mt-2 text-2xl sm:text-3xl">Centro de información</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+    <main className="bg-background text-foreground min-h-screen">
+      <div className="border-b border-border bg-primary text-primary-foreground">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-8 sm:px-6 sm:py-10">
+          <div className="flex items-center gap-2">
+            <BookOpenText className="size-6 shrink-0" aria-hidden="true" />
+            <p className="label-caps text-primary-foreground/70">
+              Centro de Ayuda Manizales
+            </p>
+          </div>
+          <h1 className="text-3xl sm:text-4xl">Centro de información</h1>
+          <p className="max-w-xl text-sm text-primary-foreground/85 sm:text-base">
             Albergues, atención médica y recursos oficiales verificados para la
             emergencia.
           </p>
-        </header>
+        </div>
+      </div>
 
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
         <form
           method="get"
           action="/informacion"
@@ -185,10 +195,13 @@ export default async function InformacionPage({
               </EmptyHeader>
             </Empty>
           ) : (
-            <ul className="mt-3 flex flex-col gap-3">
+            <ul className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {resources.map((resource) => (
                 <li key={resource.slug}>
-                  <ResourceCard resource={resource} />
+                  <ResourceCard
+                    resource={resource}
+                    photoUrl={resolveResourcePhotoUrl(resource.coverPhotoPath)}
+                  />
                 </li>
               ))}
             </ul>

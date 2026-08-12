@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { HandHelping } from "lucide-react";
 
 import {
   CONTRIBUTION_CATEGORIES,
@@ -13,6 +14,7 @@ import {
   UNASSIGNED_ZONE_VALUE,
   listComunas,
   listPublicHelpRequests,
+  resolveHelpRequestPhotoUrl,
 } from "@/modules/help-requests/queries";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
@@ -62,19 +64,24 @@ export default async function QuieroAyudarPage({
   const ruralComunas = comunas.filter((comuna) => comuna.kind === "rural");
 
   return (
-    <main className="bg-background text-foreground min-h-screen px-4 py-5 sm:px-6 sm:py-8">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-        <header>
-          <p className="label-caps text-muted-foreground">
-            Centro de Ayuda Manizales
-          </p>
-          <h1 className="mt-2 text-2xl sm:text-3xl">Quiero ayudar</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+    <main className="bg-background text-foreground min-h-screen">
+      <div className="border-b-2 border-primary bg-card">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-8 sm:px-6 sm:py-10">
+          <div className="flex items-center gap-2">
+            <HandHelping className="size-6 shrink-0 text-primary" aria-hidden="true" />
+            <p className="label-caps text-muted-foreground">
+              Centro de Ayuda Manizales
+            </p>
+          </div>
+          <h1 className="text-3xl sm:text-4xl">Quiero ayudar</h1>
+          <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
             Dinos qué puedes aportar y te mostramos quién lo necesita. La
             plataforma no te registra: tú decides a quién llamar.
           </p>
-        </header>
+        </div>
+      </div>
 
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
         <form
           method="get"
           action="/quiero-ayudar"
@@ -253,10 +260,13 @@ async function ContributionResults({
           </AlertDescription>
         </Alert>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {needs.map((need) => (
             <li key={need.referenceCode}>
-              <NeedCard need={need} />
+              <NeedCard
+                need={need}
+                photoUrl={resolveHelpRequestPhotoUrl(need.photoPath)}
+              />
             </li>
           ))}
         </ul>

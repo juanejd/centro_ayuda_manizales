@@ -11,6 +11,7 @@ import {
   UNASSIGNED_ZONE_VALUE,
   listComunas,
   listPublicHelpRequests,
+  resolveHelpRequestPhotoUrl,
 } from "@/modules/help-requests/queries";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
@@ -95,7 +96,7 @@ export default async function NeedsBoardPage({
 
   return (
     <main className="bg-background text-foreground min-h-screen px-4 py-5 sm:px-6 sm:py-8">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
         <header>
           <p className="label-caps text-muted-foreground">
             Centro de Ayuda Manizales
@@ -224,10 +225,13 @@ export default async function NeedsBoardPage({
               </EmptyHeader>
             </Empty>
           ) : (
-            <ul className="mt-3 flex flex-col gap-3">
+            <ul className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {needs.map((need) => (
                 <li key={need.referenceCode}>
-                  <NeedCard need={need} />
+                  <NeedCard
+                    need={need}
+                    photoUrl={resolveHelpRequestPhotoUrl(need.photoPath)}
+                  />
                 </li>
               ))}
             </ul>
