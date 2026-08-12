@@ -4,7 +4,9 @@ const siteUrl = process.env.SITE_URL ?? "http://localhost:3000";
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/" },
+    // RF-2 (tablero público): names, phone numbers, and photos of people
+    // who just reported an emergency must never be crawlable or indexed.
+    rules: { userAgent: "*", allow: "/", disallow: "/necesidades" },
     sitemap: `${siteUrl}/sitemap.xml`,
   };
 }

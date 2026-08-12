@@ -37,6 +37,23 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: supabaseImagePatterns(),
   },
+  // RNF: the public needs board must never be indexed or crawled — it lists
+  // names, phone numbers and photos of people who just reported an
+  // emergency. A <meta robots> tag alone is not enough (some crawlers only
+  // honor the HTTP header), so this is enforced at the response-header
+  // level for the board and every need detail page under it.
+  async headers() {
+    return [
+      {
+        source: "/necesidades",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        source: "/necesidades/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

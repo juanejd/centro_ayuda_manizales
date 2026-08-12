@@ -1,14 +1,11 @@
 import Link from "next/link";
 
 import { getActiveAlerts } from "@/modules/info-resources/alerts";
+import { toTelHref } from "@/modules/info-resources/domain";
 import {
-  PRIORITY_EMERGENCY_LINES,
-  normalizePhoneText,
-  toTelHref,
-  type PriorityEmergencyLine,
-} from "@/modules/info-resources/domain";
+  getPriorityEmergencyLines,
+} from "@/modules/info-resources/queries";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
-import { createServerSupabaseClient } from "@/shared/supabase/server";
 
 export const revalidate = 300;
 
@@ -36,45 +33,8 @@ const entryPoints = [
 ] as const;
 
 
-async function getEmergencyLines(): Promise<readonly PriorityEmergencyLine[]> {
-  try {
-    const supabase = createServerSupabaseClient();
-    const { data, error } = await supabase
-      .from("info_resources")
-      .select("phones")
-      .overlaps(
-        "phones",
-        PRIORITY_EMERGENCY_LINES.map(({ phone }) => phone),
-      )
-      .eq("category", "lineas_atencion")
-      .eq("is_published", true);
-
-    if (error) {
-      throw error;
-    }
-
-    const published = new Set(
-      ((data ?? []) as Array<{ phones: string[] | null }>).flatMap(
-        ({ phones }) => (phones ?? []).map(normalizePhoneText),
-      ),
-    );
-
-    const stillPublished = PRIORITY_EMERGENCY_LINES.filter(({ phone }) =>
-      published.has(normalizePhoneText(phone)),
-    );
-
-    if (stillPublished.length > 0) {
-      return stillPublished;
-    }
-  } catch (error) {
-    console.error("Unable to load emergency lines from the directory.", error);
-  }
-
-  return PRIORITY_EMERGENCY_LINES;
-}
-
 export default async function HomePage() {
-  const emergencyLines = await getEmergencyLines();
+  const emergencyLines = await getPriorityEmergencyLines();
   const activeAlerts = getActiveAlerts(new Date());
 
   return (

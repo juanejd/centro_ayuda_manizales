@@ -2,13 +2,12 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import Link from "next/link";
 
 import { publishFormAction } from "@/modules/help-requests/actions/publish-form-action";
 import type { PublishHelpRequestResult } from "@/modules/help-requests/actions/publish";
 import {
+  CATEGORY_LABELS,
   HELP_REQUEST_CATEGORIES,
-  type HelpRequestCategory,
 } from "@/modules/help-requests/domain/validation";
 import type {
   ComunaOption,
@@ -33,23 +32,6 @@ import {
   NativeSelectOption,
 } from "@/shared/ui/native-select";
 import { cn } from "@/shared/lib/utils";
-
-const CATEGORY_LABELS: Record<HelpRequestCategory, string> = {
-  salud: "Salud",
-  vivienda: "Vivienda",
-  albergue: "Albergue",
-  alimentos: "Alimentos",
-  agua: "Agua",
-  sangre: "Sangre",
-  mascotas: "Mascotas",
-  movilidad: "Movilidad",
-  servicios_publicos: "Servicios públicos",
-  personas_desaparecidas: "Personas desaparecidas",
-  atencion_psicologica: "Atención psicológica",
-  transporte: "Transporte",
-  remocion_escombros: "Remoción de escombros",
-  otros: "Otros",
-};
 
 // Same visual tokens as src/shared/ui/input.tsx, reused by hand here because
 // there is no shared <Textarea> component in src/shared/ui yet.
@@ -78,10 +60,7 @@ function fieldErrorList(
   state: PublishFormState,
   field: string,
 ): Array<{ message: string }> | undefined {
-  if (!state || state.ok) {
-    return undefined;
-  }
-  const messages = state.fieldErrors[field];
+  const messages = state?.fieldErrors[field];
   return messages?.map((message) => ({ message }));
 }
 
@@ -97,32 +76,6 @@ function SubmitButton() {
 
 export function PublishForm({ comunas, neighborhoods }: PublishFormProps) {
   const [state, formAction] = useActionState(publishFormAction, null);
-
-  if (state?.ok === true) {
-    const manageHref = `/mi-publicacion?code=${state.referenceCode}&token=${state.manageToken}`;
-
-    return (
-      <Alert className="border-primary">
-        <AlertTitle className="text-base font-bold">
-          Necesidad publicada
-        </AlertTitle>
-        <AlertDescription>
-          {/* Minimal inline success block for this unit only — unit 4.6
-              ("pantalla de confirmación") will likely replace this with a
-              dedicated route/redirect and a fuller set of instructions. */}
-          <p className="mt-1">
-            Tu radicado es <strong>{state.referenceCode}</strong>. Guarda el
-            siguiente enlace: es la única forma de gestionar tu publicación.
-          </p>
-          <p className="mt-2">
-            <Link href={manageHref} className="font-semibold underline underline-offset-4">
-              {manageHref}
-            </Link>
-          </p>
-        </AlertDescription>
-      </Alert>
-    );
-  }
 
   const urbanComunas = comunas.filter((comuna) => comuna.kind === "urbana");
   const ruralComunas = comunas.filter((comuna) => comuna.kind === "rural");
@@ -141,7 +94,7 @@ export function PublishForm({ comunas, neighborhoods }: PublishFormProps) {
       encType="multipart/form-data"
       className="flex flex-col gap-5 rounded-xl border border-border bg-card p-4"
     >
-      {state?.ok === false && state.formError ? (
+      {state?.formError ? (
         <Alert variant="destructive">
           <AlertTitle>No se pudo publicar</AlertTitle>
           <AlertDescription>{state.formError}</AlertDescription>

@@ -1,7 +1,7 @@
 "use server";
 
-import { createHash, randomUUID } from "node:crypto";
-import { headers } from "next/headers";
+import { randomUUID } from "node:crypto";
+import { redirect } from "next/navigation";
 
 import { generateReferenceCode } from "@/modules/help-requests/domain/reference-code";
 import {
@@ -12,6 +12,7 @@ import {
   InvalidPhotoError,
   processHelpRequestPhoto,
 } from "@/modules/help-requests/domain/photo-pipeline";
+import { getHashedClientIp } from "@/shared/security/hashed-client-ip";
 import { createServerSupabaseClient } from "@/shared/supabase/server";
 import { createServiceRoleSupabaseClient } from "@/shared/supabase/service-role";
 
@@ -22,36 +23,19 @@ const RATE_LIMIT_WINDOW_SECONDS = 10 * 60;
 const REFERENCE_CODE_MAX_ATTEMPTS = 5;
 const UNIQUE_VIOLATION = "23505";
 
-// Used only when no IP-bearing header is present at all — local dev without a
-// reverse proxy in front of it. Never used to identify a real caller.
-const LOCAL_DEV_IP_PLACEHOLDER = "local-dev-no-ip-header";
-
-export type PublishHelpRequestResult =
-  | { ok: true; referenceCode: string; manageToken: string }
-  | { ok: false; fieldErrors: Record<string, string[]>; formError?: string };
+// Success has no shape of its own: on success the action redirects to the
+// confirmation screen (unit 4.6) instead of returning, both with and without
+// JavaScript, so useActionState only ever sees the failure case.
+export type PublishHelpRequestResult = {
+  fieldErrors: Record<string, string[]>;
+  formError?: string;
+};
 
 function fail(
   fieldErrors: Record<string, string[]>,
   formError?: string,
 ): PublishHelpRequestResult {
-  return { ok: false, fieldErrors, formError };
-}
-
-/**
- * Reads the caller's IP for rate limiting only — the raw value never reaches
- * the database. It is SHA-256 hashed before being used as check_rate_limit's
- * client_key.
- */
-async function getHashedClientIp(): Promise<string> {
-  const headerList = await headers();
-
-  const forwardedFor = headerList.get("x-forwarded-for");
-  const firstForwarded = forwardedFor?.split(",")[0]?.trim();
-
-  const ip =
-    firstForwarded || headerList.get("x-real-ip") || LOCAL_DEV_IP_PLACEHOLDER;
-
-  return createHash("sha256").update(ip).digest("hex");
+  return { fieldErrors, formError };
 }
 
 function optionalString(value: FormDataEntryValue | null): string | undefined {
@@ -263,7 +247,12 @@ export async function publishHelpRequest(
     });
 
     if (!error) {
-      return { ok: true, referenceCode, manageToken };
+      // redirect() throws internally (NEXT_REDIRECT); this must NOT be
+      // inside a try/catch that could swallow it. Works identically with
+      // and without JavaScript: the browser follows the 303 natively.
+      redirect(
+        `/necesito-ayuda/confirmacion?code=${encodeURIComponent(referenceCode)}&token=${encodeURIComponent(manageToken)}`,
+      );
     }
 
     lastError = error
