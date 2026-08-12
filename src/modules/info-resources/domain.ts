@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const RESOURCE_CATEGORIES = [
   "albergues",
   "hospitales",
@@ -200,3 +202,147 @@ export type PriorityEmergencyLine = (typeof PRIORITY_EMERGENCY_LINES)[number];
 export function normalizePhoneText(phone: string): string {
   return phone.trim().toLowerCase().replace(/\s+/g, " ");
 }
+
+// =============================================================================
+// Unit 6.5/6.7 — Zod schemas for the staff-only create/edit forms.
+//
+// Framework-agnostic, like help-requests/domain/validation.ts's schema: no
+// server-only import, operates on an already-normalized plain object. The
+// FormData -> candidate coercion (splitting the phones textarea, etc.) is the
+// Server Action's job, not this module's — see
+// src/modules/moderation/actions/resources.ts.
+// =============================================================================
+
+// Mirrors the CHECK constraint on info_resources.slug.
+export const RESOURCE_SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+function isValidDateString(value: string): boolean {
+  return !Number.isNaN(Date.parse(value));
+}
+
+function requireNeighborhoodComunaTogether(
+  value: { neighborhoodCode?: string; comunaCode?: string },
+  ctx: z.RefinementCtx,
+): void {
+  const hasNeighborhood = value.neighborhoodCode !== undefined;
+  const hasComuna = value.comunaCode !== undefined;
+
+  if (hasNeighborhood !== hasComuna) {
+    ctx.addIssue({
+      code: "custom",
+      path: [hasNeighborhood ? "comunaCode" : "neighborhoodCode"],
+      message:
+        "neighborhoodCode and comunaCode must be supplied together, or not at all",
+    });
+  }
+}
+
+/**
+ * RI-1/RI-2/RI-6 and the info_resources_verified_complete DB constraint
+ * (see supabase/migrations/20260812120000_moderation_institutional_content.sql):
+ * marking a resource 'verificado' without both a source and a verification
+ * date is rejected here first, for a clean redirect instead of a raw
+ * Postgres error reaching the moderator — the same shape as
+ * help_requests_verified_complete / verifyHelpRequest in moderate.ts.
+ */
+function requireSourceAndDateWhenVerified(
+  value: { status: ResourceStatus; source?: string; verifiedAt?: string },
+  ctx: z.RefinementCtx,
+): void {
+  if (value.status !== "verificado") {
+    return;
+  }
+
+  if (!value.source) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["source"],
+      message:
+        "La fuente es obligatoria para marcar un recurso como verificado.",
+    });
+  }
+
+  if (!value.verifiedAt) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["verifiedAt"],
+      message:
+        "La fecha de verificación es obligatoria para marcar un recurso como verificado.",
+    });
+  }
+}
+
+const resourceFieldsSchema = z.object({
+  category: z.enum(RESOURCE_CATEGORIES),
+  name: z.string().trim().min(2).max(200),
+  description: z.string().trim().max(4000).optional(),
+  address: z.string().trim().max(240).optional(),
+  neighborhoodCode: z.string().trim().min(1).max(80).optional(),
+  comunaCode: z.string().trim().min(1).max(60).optional(),
+  meetingPoint: z.string().trim().max(400).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  phones: z.array(z.string().trim().min(1).max(60)).max(10),
+  hours: z.string().trim().max(240).optional(),
+  source: z.string().trim().max(200).optional(),
+  status: z.enum(RESOURCE_STATUSES),
+  verifiedAt: z
+    .string()
+    .trim()
+    .min(1)
+    .refine(isValidDateString, "Fecha de verificación inválida.")
+    .optional(),
+});
+
+export const createResourceSchema = z
+  .object({
+    slug: z
+      .string()
+      .trim()
+      .min(1)
+      .max(140)
+      .regex(
+        RESOURCE_SLUG_PATTERN,
+        "Usa minúsculas, números y guiones, sin espacios (ej. mi-recurso).",
+      ),
+  })
+  .extend(resourceFieldsSchema.shape)
+  .superRefine((value, ctx) => {
+    requireNeighborhoodComunaTogether(value, ctx);
+    requireSourceAndDateWhenVerified(value, ctx);
+  });
+
+export const editResourceSchema = resourceFieldsSchema.superRefine(
+  (value, ctx) => {
+    requireNeighborhoodComunaTogether(value, ctx);
+    requireSourceAndDateWhenVerified(value, ctx);
+  },
+);
+
+export type CreateResourceInput = z.infer<typeof createResourceSchema>;
+export type EditResourceInput = z.infer<typeof editResourceSchema>;
+
+// Unit 6.6: "no se puede guardar una foto sin texto alternativo" — enforced
+// here, before any upload happens, not just at the (nullable) DB column.
+export const resourcePhotoSchema = z.object({
+  caption: z
+    .string()
+    .trim()
+    .min(1, "El texto alternativo es obligatorio.")
+    .max(300),
+});
+
+// Unit 6.7 — mirrors the alerts table's CHECK constraints.
+export const alertFieldsSchema = z.object({
+  title: z.string().trim().min(2).max(200),
+  description: z.string().trim().min(2).max(4000),
+  source: z.string().trim().min(1).max(200),
+  expiresAt: z
+    .string()
+    .trim()
+    .min(1)
+    .refine(isValidDateString, "Fecha de vencimiento inválida.")
+    .optional(),
+});
+
+export type AlertFieldsInput = z.infer<typeof alertFieldsSchema>;

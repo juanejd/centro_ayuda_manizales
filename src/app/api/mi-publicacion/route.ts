@@ -45,6 +45,30 @@ function formValue(formData: FormData, key: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+// RF-6.8: every modification records author and date, citizen actions
+// included — see fase-6-moderacion.md's 6.3 note: the actor column
+// distinguishes a staff user_id from this literal, which marks an action
+// the citizen made with their own token from fase 4. Uses service_role
+// because there is no authenticated session here at all (anon never gets
+// an INSERT grant on moderation_log — only authenticated+is_staff() or
+// service_role can write to it).
+const OWNER_TOKEN_ACTOR = "owner_token";
+
+async function logOwnerAction(
+  serviceClient: ReturnType<typeof createServiceRoleSupabaseClient>,
+  action: "resolve" | "withdraw" | "update",
+  requestId: number,
+  payload?: Record<string, unknown>,
+): Promise<void> {
+  await serviceClient.from("moderation_log").insert({
+    entity_type: "help_request",
+    entity_id: requestId,
+    action,
+    actor: OWNER_TOKEN_ACTOR,
+    payload: payload ?? null,
+  });
+}
+
 export async function POST(request: Request): Promise<Response> {
   const formData = await request.formData();
 
@@ -124,6 +148,7 @@ export async function POST(request: Request): Promise<Response> {
           resolved_at: new Date().toISOString(),
         })
         .eq("request_id", managed.requestId);
+      await logOwnerAction(serviceClient, "resolve", managed.requestId);
     }
     return NextResponse.redirect(
       new URL(`${manageHref}&ok=resuelta`, request.url),
@@ -139,6 +164,7 @@ export async function POST(request: Request): Promise<Response> {
         withdrawn_at: new Date().toISOString(),
       })
       .eq("request_id", managed.requestId);
+    await logOwnerAction(serviceClient, "withdraw", managed.requestId);
     return NextResponse.redirect(
       new URL(`${manageHref}&ok=retirada`, request.url),
       303,
@@ -171,6 +197,7 @@ export async function POST(request: Request): Promise<Response> {
         contact_phone: parsed.data.contactPhone,
       })
       .eq("request_id", managed.requestId);
+    await logOwnerAction(serviceClient, "update", managed.requestId);
 
     return NextResponse.redirect(
       new URL(`${manageHref}&ok=corregido`, request.url),

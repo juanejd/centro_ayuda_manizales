@@ -68,6 +68,25 @@ export const MODERATION_BADGE: Record<
   },
 };
 
+// RF-1.13: never computed automatically — a request is born without one,
+// only a Moderator (fase 6) assigns it.
+export const PRIORITY_LEVELS = ["critico", "alto", "medio", "bajo"] as const;
+export type PriorityLevel = (typeof PRIORITY_LEVELS)[number];
+
+export function isPriorityLevel(value: unknown): value is PriorityLevel {
+  return (
+    typeof value === "string" &&
+    (PRIORITY_LEVELS as readonly string[]).includes(value)
+  );
+}
+
+export const PRIORITY_LABELS: Record<PriorityLevel, string> = {
+  critico: "Crítico",
+  alto: "Alto",
+  medio: "Medio",
+  bajo: "Bajo",
+};
+
 export const CATEGORY_LABELS: Record<HelpRequestCategory, string> = {
   salud: "Salud",
   vivienda: "Vivienda",

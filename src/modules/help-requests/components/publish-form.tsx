@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -334,6 +335,17 @@ export function PublishForm({ comunas, neighborhoods }: PublishFormProps) {
 
         <FieldSet>
           <FieldLegend>Autorizaciones</FieldLegend>
+          <p className="text-sm text-muted-foreground">
+            Lee el{" "}
+            <Link
+              href="/aviso-de-privacidad"
+              target="_blank"
+              className="underline underline-offset-4"
+            >
+              aviso de privacidad
+            </Link>{" "}
+            antes de autorizar.
+          </p>
 
           <div className="flex items-start gap-2">
             <input

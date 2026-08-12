@@ -34,8 +34,10 @@ const entryPoints = [
 
 
 export default async function HomePage() {
-  const emergencyLines = await getPriorityEmergencyLines();
-  const activeAlerts = getActiveAlerts(new Date());
+  const [emergencyLines, activeAlerts] = await Promise.all([
+    getPriorityEmergencyLines(),
+    getActiveAlerts(),
+  ]);
 
   return (
     <main className="bg-background text-foreground min-h-screen px-4 py-5 sm:px-6 sm:py-8">
