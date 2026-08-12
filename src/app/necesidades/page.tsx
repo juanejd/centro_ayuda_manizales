@@ -69,7 +69,7 @@ export default async function NeedsBoardPage({
 
   const [{ items: needs, hasMore }, comunas] = await Promise.all([
     listPublicHelpRequests({
-      category,
+      categories: category ? [category] : undefined,
       comunaCode: comunaParam,
       query: queryParam,
       page,

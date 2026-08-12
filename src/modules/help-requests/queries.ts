@@ -66,7 +66,11 @@ export const UNASSIGNED_ZONE_VALUE = "sin-asignar";
 export const HELP_REQUESTS_BOARD_PAGE_SIZE = 20;
 
 export type HelpRequestBoardFilters = {
-  category?: string | null;
+  // A list so fase 5's contribution filter (which can translate to several
+  // categories at once, e.g. "servicios profesionales") reuses this exact
+  // query — the board (fase 4) just always passes a single-element list.
+  // Omitted or empty means "no category filter" (every category).
+  categories?: readonly string[] | null;
   comunaCode?: string | null;
   query?: string | null;
   page?: number;
@@ -175,8 +179,11 @@ export async function listPublicHelpRequests(
 
   let request = supabase.from("public_help_requests").select(BOARD_COLUMNS);
 
-  if (isHelpRequestCategory(filters.category)) {
-    request = request.eq("category", filters.category);
+  const validCategories = (filters.categories ?? []).filter(
+    isHelpRequestCategory,
+  );
+  if (validCategories.length > 0) {
+    request = request.in("category", validCategories);
   }
 
   if (filters.comunaCode === UNASSIGNED_ZONE_VALUE) {
