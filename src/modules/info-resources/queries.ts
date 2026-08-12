@@ -1,9 +1,12 @@
 import "server-only";
 
 import {
+  PRIORITY_EMERGENCY_LINES,
   isResourceCategory,
+  normalizePhoneText,
   resolveFreshness,
   type Freshness,
+  type PriorityEmergencyLine,
   type ResourceCategory,
   type ResourceStatus,
 } from "@/modules/info-resources/domain";
@@ -208,6 +211,52 @@ export async function getResourceBySlug(
     longitude: row.longitude,
     photos,
   };
+}
+
+/**
+ * The hardcoded 123/119 numbers, confirmed against the directory when
+ * possible so a stale or withdrawn entry doesn't get promoted to every
+ * emergency-lines block in the app. Falls back to the raw hardcoded set on
+ * any read failure — these numbers must never disappear because of an
+ * unrelated query error.
+ */
+export async function getPriorityEmergencyLines(): Promise<
+  readonly PriorityEmergencyLine[]
+> {
+  try {
+    const supabase = createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("info_resources")
+      .select("phones")
+      .overlaps(
+        "phones",
+        PRIORITY_EMERGENCY_LINES.map(({ phone }) => phone),
+      )
+      .eq("category", "lineas_atencion")
+      .eq("is_published", true);
+
+    if (error) {
+      throw error;
+    }
+
+    const published = new Set(
+      ((data ?? []) as Array<{ phones: string[] | null }>).flatMap(
+        ({ phones }) => (phones ?? []).map(normalizePhoneText),
+      ),
+    );
+
+    const stillPublished = PRIORITY_EMERGENCY_LINES.filter(({ phone }) =>
+      published.has(normalizePhoneText(phone)),
+    );
+
+    if (stillPublished.length > 0) {
+      return stillPublished;
+    }
+  } catch (error) {
+    console.error("Unable to load emergency lines from the directory.", error);
+  }
+
+  return PRIORITY_EMERGENCY_LINES;
 }
 
 export async function listComunas(): Promise<ComunaOption[]> {

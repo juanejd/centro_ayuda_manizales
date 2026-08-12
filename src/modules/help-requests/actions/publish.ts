@@ -228,6 +228,13 @@ export async function publishHelpRequest(
   }
 
   const nowIso = new Date().toISOString();
+  // Generated here, not read back after insert: anon has no SELECT grant on
+  // help_requests (see supabase/migrations/*_allow_anon_insert_manage_token.sql),
+  // so `.insert().select()` would fail with "permission denied for table
+  // help_requests" — RETURNING requires SELECT privilege, which this table
+  // deliberately never grants to anon. Same UUIDv4 entropy as the column's
+  // gen_random_uuid() default.
+  const manageToken = randomUUID();
 
   let attempt = 0;
   let lastError: { code?: string; message: string } | null = null;
@@ -236,34 +243,27 @@ export async function publishHelpRequest(
     attempt += 1;
     const referenceCode = generateReferenceCode();
 
-    const { data, error } = await anonClient
-      .from("help_requests")
-      .insert({
-        reference_code: referenceCode,
-        category: input.category satisfies HelpRequestCategory,
-        description: input.description,
-        sector: input.sector,
-        neighborhood_code: input.neighborhoodCode ?? null,
-        comuna_code: input.comunaCode ?? null,
-        address: input.address ?? null,
-        latitude: input.latitude ?? null,
-        longitude: input.longitude ?? null,
-        affected_people: input.affectedPeople ?? null,
-        contact_name: input.contactName,
-        contact_phone: input.contactPhone,
-        photo_path: photoPath ?? null,
-        consent_accepted_at: nowIso,
-        public_consent_at: nowIso,
-      })
-      .select("reference_code, manage_token")
-      .single();
+    const { error } = await anonClient.from("help_requests").insert({
+      reference_code: referenceCode,
+      manage_token: manageToken,
+      category: input.category satisfies HelpRequestCategory,
+      description: input.description,
+      sector: input.sector,
+      neighborhood_code: input.neighborhoodCode ?? null,
+      comuna_code: input.comunaCode ?? null,
+      address: input.address ?? null,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      affected_people: input.affectedPeople ?? null,
+      contact_name: input.contactName,
+      contact_phone: input.contactPhone,
+      photo_path: photoPath ?? null,
+      consent_accepted_at: nowIso,
+      public_consent_at: nowIso,
+    });
 
-    if (!error && data) {
-      return {
-        ok: true,
-        referenceCode: data.reference_code as string,
-        manageToken: data.manage_token as string,
-      };
+    if (!error) {
+      return { ok: true, referenceCode, manageToken };
     }
 
     lastError = error
